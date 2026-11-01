@@ -109,6 +109,13 @@ describe('create', () => {
     expect(await createFuelEntry(a.id, { ...input, odometer: 1200 })).toEqual({ status: 'duplicate' })
   })
 
+  it('concurrent creates with the same id yield one created and one duplicate', async () => {
+    const input = fuel()
+    const results = await Promise.all([createFuelEntry(a.id, input), createFuelEntry(a.id, input)])
+    expect(results.map((r) => r.status).sort()).toEqual(['created', 'duplicate'])
+    expect(await db.select().from(energyEntry)).toHaveLength(1)
+  })
+
   it('a fuel id replayed as service is a duplicate', async () => {
     const input = fuel()
     await createFuelEntry(a.id, input)

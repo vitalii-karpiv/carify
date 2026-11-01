@@ -108,24 +108,27 @@ export function listOdometerPoints(userId: string, vehicleId: string): Promise<O
 
 type EntryInsert = { id: string; vehicleId: string; date: Date; odometer: number }
 
+async function findOwner(tx: Executor, id: string): Promise<string | undefined> {
+  const [fuelHit] = await tx
+    .select({ userId: energyEntry.userId })
+    .from(energyEntry)
+    .where(eq(energyEntry.id, id))
+  if (fuelHit) return fuelHit.userId
+  const [serviceHit] = await tx
+    .select({ userId: serviceEntry.userId })
+    .from(serviceEntry)
+    .where(eq(serviceEntry.id, id))
+  return serviceHit?.userId
+}
+
 async function createEntry(
   userId: string,
   input: EntryInsert,
-  insert: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<unknown>,
+  insert: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<{ id: string }[]>,
 ): Promise<CreateResult> {
-  return db.transaction(async (tx) => {
-    const [fuelHit] = await tx
-      .select({ userId: energyEntry.userId })
-      .from(energyEntry)
-      .where(eq(energyEntry.id, input.id))
-    const [serviceHit] = fuelHit
-      ? []
-      : await tx
-          .select({ userId: serviceEntry.userId })
-          .from(serviceEntry)
-          .where(eq(serviceEntry.id, input.id))
-    const hit = fuelHit ?? serviceHit
-    if (hit) return { status: hit.userId === userId ? 'duplicate' : 'conflict' }
+  return db.transaction(async (tx): Promise<CreateResult> => {
+    const existing = await findOwner(tx, input.id)
+    if (existing !== undefined) return { status: existing === userId ? 'duplicate' : 'conflict' }
 
     const [owned] = await tx
       .select({ id: vehicle.id })
@@ -138,8 +141,11 @@ async function createEntry(
       return { status: 'odometer_out_of_range', min: check.min, max: check.max }
     }
 
-    await insert(tx)
-    return { status: 'created' }
+    const inserted = await insert(tx)
+    if (inserted.length > 0) return { status: 'created' }
+    // A concurrent create with the same id committed first; classify it now.
+    const winner = await findOwner(tx, input.id)
+    return { status: winner === userId ? 'duplicate' : 'conflict' }
   })
 }
 
@@ -147,7 +153,9 @@ export function createFuelEntry(userId: string, input: FuelEntryInput): Promise<
   return createEntry(userId, input, (tx) =>
     tx
       .insert(energyEntry)
-      .values({ id: input.id, userId, vehicleId: input.vehicleId, ...fuelFields(input) }),
+      .values({ id: input.id, userId, vehicleId: input.vehicleId, ...fuelFields(input) })
+      .onConflictDoNothing()
+      .returning({ id: energyEntry.id }),
   )
 }
 
@@ -158,7 +166,9 @@ export function createServiceEntry(
   return createEntry(userId, input, (tx) =>
     tx
       .insert(serviceEntry)
-      .values({ id: input.id, userId, vehicleId: input.vehicleId, ...serviceFields(input) }),
+      .values({ id: input.id, userId, vehicleId: input.vehicleId, ...serviceFields(input) })
+      .onConflictDoNothing()
+      .returning({ id: serviceEntry.id }),
   )
 }
 
