@@ -1,5 +1,6 @@
 import { BottomTabs } from '@/components/shell/bottom-tabs'
 import { Fab } from '@/components/shell/fab'
+import { SyncBanners } from '@/components/sync/sync-banners'
 import { TopBar } from '@/components/shell/top-bar'
 import { requireUser } from '@/lib/auth/session'
 import { listVehicles } from '@/lib/data/vehicles'
@@ -15,6 +16,7 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
         vehicles={vehicles.map((v) => ({ id: v.id, name: v.name }))}
         selectedId={selected?.id ?? null}
       />
+      <SyncBanners />
       <main className="mx-auto w-full max-w-md flex-1 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+7.5rem)]">
         {children}
       </main>
