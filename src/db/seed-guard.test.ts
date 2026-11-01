@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isLocalDatabaseUrl } from './seed-guard'
+import { isLocalDatabaseUrl, testDatabaseUrl } from './seed-guard'
 
 describe('isLocalDatabaseUrl', () => {
   it.each([
@@ -24,4 +24,21 @@ describe('isLocalDatabaseUrl', () => {
   ])('refuses %s', (u) => expect(isLocalDatabaseUrl(u)).toBe(false))
 
   it('refuses undefined', () => expect(isLocalDatabaseUrl(undefined)).toBe(false))
+})
+
+describe('testDatabaseUrl', () => {
+  it('appends _test to the local database name', () => {
+    expect(testDatabaseUrl('postgres://carify:carify@localhost:5432/carify')).toBe(
+      'postgres://carify:carify@localhost:5432/carify_test',
+    )
+    expect(testDatabaseUrl('postgres://u:p@127.0.0.1/app?sslmode=disable')).toBe(
+      'postgres://u:p@127.0.0.1/app_test?sslmode=disable',
+    )
+  })
+
+  it('refuses non-local URLs and URLs without a database', () => {
+    expect(() => testDatabaseUrl('postgres://u:p@ep-x.neon.tech/neondb')).toThrow()
+    expect(() => testDatabaseUrl(undefined)).toThrow()
+    expect(() => testDatabaseUrl('postgres://u:p@localhost:5432')).toThrow()
+  })
 })

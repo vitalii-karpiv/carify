@@ -1,4 +1,4 @@
-import type { FuelGrade, ServiceCategory } from './enums'
+import type { FuelGrade, GasStation, ServiceCategory } from './enums'
 
 export type Vehicle = {
   id: string
@@ -25,7 +25,7 @@ export type FuelEntry = {
   grade: FuelGrade
   isFull: boolean
   missedPrevious: boolean
-  station: string | null
+  station: GasStation | null
   note: string | null
 }
 
@@ -41,9 +41,11 @@ export type ServiceEntry = {
   notes: string | null
 }
 
-export type SnapshotVehicle = {
+/** A vehicle as the add-entry form needs it. */
+export type EntryVehicle = {
   id: string
   name: string
   defaultGrade: FuelGrade
   lastOdometer: number | null
+  lastStation: GasStation | null
 }

@@ -41,7 +41,7 @@ function toFuelEntry(row: FuelRow): FuelEntry {
     grade: row.grade as FuelEntry['grade'],
     isFull: row.isFull,
     missedPrevious: row.missedPrevious,
-    station: row.station,
+    station: row.station as FuelEntry['station'],
     note: row.note,
   }
 }

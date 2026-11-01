@@ -22,7 +22,7 @@ await sharp(square).resize(180, 180).png().toFile('public/icons/apple-touch-icon
 const sizes = [
   [1179, 2556], [1290, 2796], [1170, 2532], [1284, 2778], [1125, 2436], [828, 1792], [750, 1334],
 ]
-const themes = { light: '#ffffff', dark: '#0a0a0a' }
+const themes = { light: '#f2f6fb', dark: '#0a0e14' }
 for (const [w, h] of sizes) {
   for (const [name, bg] of Object.entries(themes)) {
     const logo = await sharp(rounded).resize(Math.round(w * 0.28)).png().toBuffer()

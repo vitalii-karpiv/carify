@@ -18,6 +18,8 @@ const e = (
 const partial = (odo: number, litres: number, opts = {}) => e(odo, litres, { isFull: false, ...opts })
 
 const seg = (km: number, litres: number, valid = true): Segment => ({
+  startEntryId: 'w',
+  fuelEntryIds: ['w'],
   endEntryId: 'x',
   endDate: new Date(0),
   startOdometer: 0,
@@ -40,6 +42,18 @@ describe('computeSegments', () => {
     expect(s).toHaveLength(1)
     expect(s[0]).toMatchObject({ km: 600, litres: 40 })
     expect(s[0].lPer100).toBeCloseTo(6.667, 3)
+  })
+
+  it('records the fills whose fuel each segment burned', () => {
+    const a = e(10000, 40)
+    const p = partial(10200, 15)
+    const b = e(10600, 25)
+    const c = e(11000, 30)
+    const s = computeSegments([a, p, b, c])
+    expect(s.map((x) => [x.startEntryId, x.fuelEntryIds, x.endEntryId])).toEqual([
+      [a.id, [a.id, p.id], b.id],
+      [b.id, [b.id], c.id],
+    ])
   })
 
   it('leading partial ignored', () => {

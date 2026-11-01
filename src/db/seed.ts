@@ -1,4 +1,5 @@
 import { v7 as uuidv7 } from 'uuid'
+import type { GasStation } from '@/lib/domain/enums'
 
 const DEMO_EMAIL = 'demo@carify.local'
 const DEMO_PASSWORD = 'demo-password'
@@ -60,7 +61,7 @@ async function main() {
     seed: number
     fills: number
     services: { at: number; category: 'OIL_CHANGE' | 'TYRES' | 'BRAKES' | 'INSPECTION'; kop: number; garage: string }[]
-    stations: string[]
+    stations: GasStation[]
   }
   const specs: Spec[] = [
     {
@@ -84,7 +85,7 @@ async function main() {
         { at: 14, category: 'BRAKES', kop: 540_000, garage: 'AutoMaster' },
         { at: 19, category: 'INSPECTION', kop: 150_000, garage: 'TechCenter' },
       ],
-      stations: ['OKKO', 'WOG', 'SOCAR'],
+      stations: ['OKKO', 'WOG', 'OTHER'],
     },
     {
       input: {
@@ -107,7 +108,7 @@ async function main() {
         { at: 13, category: 'BRAKES', kop: 620_000, garage: 'SkodaService' },
         { at: 18, category: 'TYRES', kop: 690_000, garage: 'ShinaPlus' },
       ],
-      stations: ['UPG', 'Shell', 'OKKO'],
+      stations: ['UPG', 'UKRNAFTA', 'OKKO'],
     },
   ]
 

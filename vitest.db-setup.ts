@@ -1,13 +1,12 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import { testDatabaseUrl } from './src/db/seed-guard'
 
 if (existsSync('.env')) process.loadEnvFile('.env')
-if (!process.env.TEST_DATABASE_URL || process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) {
-  throw new Error('TEST_DATABASE_URL must be set and differ from DATABASE_URL (resetDb truncates tables)')
-}
+// resetDb truncates tables, so tests always run against `<db>_test` on a local server.
 // Must happen before anything imports src/db/client.ts.
-process.env.DATABASE_URL = process.env.TEST_DATABASE_URL
+process.env.DATABASE_URL = testDatabaseUrl(process.env.DATABASE_URL)
 
 let migrated = false
 

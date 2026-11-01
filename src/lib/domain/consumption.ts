@@ -8,6 +8,9 @@ export type ConsumptionEntry = {
 }
 
 export type Segment = {
+  startEntryId: string
+  /** The fills whose fuel was burned in this segment: the starting full fill plus any partials before the end. */
+  fuelEntryIds: string[]
   endEntryId: string
   endDate: Date
   startOdometer: number
@@ -26,6 +29,7 @@ export function computeSegments(entries: ConsumptionEntry[]): Segment[] {
   let baseline: ConsumptionEntry | null = null
   let litres = 0
   let missed = false
+  let partialIds: string[] = []
 
   for (const entry of sorted) {
     if (!baseline) {
@@ -34,11 +38,16 @@ export function computeSegments(entries: ConsumptionEntry[]): Segment[] {
     }
     litres += entry.litres
     missed ||= entry.missedPrevious
-    if (!entry.isFull) continue
+    if (!entry.isFull) {
+      partialIds.push(entry.id)
+      continue
+    }
 
     const km = entry.odometer - baseline.odometer
     const valid = !missed && km > 0
     segments.push({
+      startEntryId: baseline.id,
+      fuelEntryIds: [baseline.id, ...partialIds],
       endEntryId: entry.id,
       endDate: entry.date,
       startOdometer: baseline.odometer,
@@ -51,6 +60,7 @@ export function computeSegments(entries: ConsumptionEntry[]): Segment[] {
     baseline = entry
     litres = 0
     missed = false
+    partialIds = []
   }
   return segments
 }

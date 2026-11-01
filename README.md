@@ -28,7 +28,7 @@ With Docker running:
 
 ```bash
 npm test           # unit tests
-npm run test:db    # DB integration tests (need the Docker Postgres)
+npm run test:db    # DB integration tests (use `<db>_test` next to the local DATABASE_URL)
 ```
 
 ## Production setup
@@ -39,14 +39,12 @@ Only the `master` branch deploys (`vercel.json`); previews are disabled.
 2. **Vercel**: import the repository as a new project. Pick the project name
    carefully: the production URL `https://<name>.vercel.app` is permanent
    (see Troubleshooting). Set the Production Branch to `master`.
-3. **Neon**: create a project on **Postgres 17**.
-   - Pooled connection string -> `DATABASE_URL`
-   - Direct (non-pooled) connection string -> `DATABASE_URL_UNPOOLED` (used for migrations)
-
-   If you use the Vercel-Neon integration, it injects `DATABASE_URL` and
-   `DATABASE_URL_UNPOOLED` itself. Do NOT let it create preview branches.
+3. **Neon**: create a project on **Postgres 17**. Copy the **direct**
+   (non-pooled) connection string; it is the only database variable
+   (`DATABASE_URL`) and is also used for migrations. Do not use the Vercel-Neon
+   integration's preview branches.
 4. **Environment variables** (Vercel -> Settings -> Environment Variables, Production):
-   - `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (see above, unless injected by the integration)
+   - `DATABASE_URL`: the Neon direct connection string
    - `BETTER_AUTH_SECRET`: output of `openssl rand -base64 32`
    - `BETTER_AUTH_URL`: `https://<name>.vercel.app`
 5. **First deploy**: push to `master` (or redeploy). The build runs
@@ -56,7 +54,7 @@ Only the `master` branch deploys (`vercel.json`); previews are disabled.
 ## Install on iPhone
 
 Open the production URL in Safari -> Share -> Add to Home Screen.
-The service worker registers only in production builds.
+The app needs a connection; there is no offline mode.
 
 ## Project rules
 
@@ -72,6 +70,4 @@ The service worker registers only in production builds.
 - **Passkeys stop working**: passkeys are bound to the domain (RP ID). Changing
   the production domain, and so `BETTER_AUTH_URL`, invalidates all existing
   passkeys. Keep the `*.vercel.app` URL permanent.
-- **Stale app after a deploy**: the service worker cache refreshes
-  automatically on the next deploy; reload or reopen the app once.
-- **Build fails at migrate**: check that `DATABASE_URL_UNPOOLED` is set and reachable.
+- **Build fails at migrate**: check that `DATABASE_URL` is set and reachable.

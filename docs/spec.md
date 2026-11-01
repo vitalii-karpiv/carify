@@ -1,6 +1,6 @@
 # Carify — Specification
 
-Status: agreed (2026-11-01). Scope: MVP.
+Status: agreed (2026-11-01). Scope: MVP + UI refresh (2026-11-01: colours, floating navbar, stats on the dashboard, stations, no offline mode).
 
 Carify is a personal car tracker — fuel and service logs with consumption and cost stats — built as a Next.js PWA meant to be installed on an iPhone home screen.
 
@@ -13,7 +13,7 @@ Carify is a personal car tracker — fuel and service logs with consumption and 
 | Vehicles | Multiple per user. Archive (soft) or hard delete (cascades entries). |
 | Powertrain | Petrol/diesel only in MVP. Data model uses generic `quantity` + `unit` so kWh/LPG can be added later. |
 | Locale | English UI, `uk-UA` number/date formatting via `Intl`, kilometres, L/100km, UAH. No i18n library. |
-| Offline | Server-first, plus an offline outbox for **creating** fuel/service entries. Everything else requires a connection. |
+| Offline | None. Every screen needs a connection. Saving without one shows "No connection — try again" and keeps the form. |
 | Out of scope | Reminders, notifications, export, import, receipt photos, non-fuel/service expenses, trips, EV/LPG. |
 
 ## 2. Features
@@ -25,7 +25,7 @@ Fields: `name`, `make`, `model`, `year`, `plate`, `vin?`, `defaultGrade`.
 
 ### 2.2 Vehicle switcher
 - Top bar on every app screen. Selection is persisted in a `vehicleId` cookie so server components can read it.
-- All tabs (dashboard, fuel, service, stats) show the selected vehicle.
+- All tabs (dashboard, fuel, service) show the selected vehicle.
 - No vehicles yet → every app screen shows an empty state pointing to "Add vehicle".
 
 ### 2.3 Fuel log
@@ -36,11 +36,14 @@ Form fields:
 - **Grade** — defaults to the vehicle's `defaultGrade`
 - **Full tank** (default on)
 - **Missed previous fill** (default off)
-- **Station** (optional), **Note** (optional)
+- **Station** (optional): one-tap buttons `OKKO`, `Ukrnafta`, `UPG`, `WOG`, `Other`; tapping the selected one clears it. Preselected = the vehicle's most recent recorded station, following the vehicle select until the user picks one.
+- **Note** (optional)
 
-Vehicle preselected = last used vehicle.
+Vehicle preselected = the selected vehicle (cookie).
 
 Fuel grades (code-level enum, easy to extend): `A92`, `A95`, `A95_PLUS`, `A98`, `DIESEL`, `DIESEL_PLUS`.
+
+Gas stations (code-level enum): `OKKO`, `UKRNAFTA`, `UPG`, `WOG`, `OTHER` (labels `OKKO`, `Ukrnafta`, `UPG`, `WOG`, `Other`). Migration `0002` converted earlier free-text stations by case-insensitive name (`Укрнафта` → `UKRNAFTA`), anything else → `OTHER`.
 
 ### 2.4 Service log
 Fields: date, odometer, category, total cost, garage (optional), notes (optional).
@@ -51,70 +54,28 @@ Categories: `OIL_CHANGE`, `BRAKES`, `TYRES`, `INSPECTION`, `REPAIR`, `OTHER`.
 - Vehicles: see §2.1. Online only.
 
 ### 2.6 Dashboard (selected vehicle)
-- Current odometer (max odometer across fuel + service entries; "—" if none)
-- Average L/100km (lifetime) and last L/100km
-- Spend this month (fuel + service)
-- Last 5 entries, fuel and service mixed, newest first
-- Link to Stats
-
-### 2.7 Stats (selected vehicle, page under dashboard)
-1. Average L/100km — lifetime and last segment
-2. Consumption trend — L/100km per valid segment over time (line)
-3. Price-per-litre trend — per grade (line, one series per grade)
-4. Monthly spend — fuel vs service (stacked bars)
-5. Cost per km — `(total fuel + service spend) / (max odometer − min odometer)`; hidden if distance is 0
-6. Total spent — fuel, service, combined
+Top to bottom (there is no separate stats page; `/stats` redirects to `/`):
+1. **Hero card** (brand gradient): make, model, year, plate; current odometer (max across fuel + service, "—" if none); "Last fill-up <date> · <station> · <grade>".
+2. **Stat tiles**: spend this month (fuel + service), average L/100km (lifetime), last L/100km.
+3. **Consumption** — L/100km per valid segment over time.
+4. **Price per litre** — one series per grade.
+5. **By station** (§4.5).
+6. **Monthly spend** — fuel vs service (stacked bars).
+7. **Totals** — fuel, service, combined; cost per km `(total spend) / (max odometer − min odometer)`, hidden if distance is 0.
 
 All stats are computed at read time; nothing derived is stored.
 
-### 2.8 Navigation & shell
-- Bottom tab bar: **Dashboard · Fuel · Service · Vehicles**
-- Floating "+" button → quick add (fuel by default, toggle to service)
-- Top bar: vehicle switcher, sync status indicator, link to Settings
-- Settings: manage passkeys, sign out, "Needs attention" list (§3.5)
-- iOS safe areas respected; light/dark follows system
+### 2.7 Navigation & shell
+- Floating glass navbar (Instagram-like): a pill 16px from the screen edges, above the home indicator, translucent with backdrop blur and a thin border. Five icon-only tabs (each with an accessible label): **Dashboard · Fuel · [+] · Service · Vehicles**. The active tab sits on a lighter pill that slides between tabs, with its icon in the brand colour. The middle **+** is a brand-gradient circle that opens `/add` (fuel by default, Fuel/Service switch on the form). Page content is padded so the bar never covers it.
+- Top bar: vehicle switcher, link to Settings.
+- Settings: manage passkeys, sign out.
+- iOS safe areas respected; light/dark follows system.
 
-## 3. Offline design
-
-### 3.1 Scope
-- Works offline: the **Add entry** screen (`/add`) only.
-- Other screens offline: offline fallback / banner "Offline — N entries waiting to sync".
-
-### 3.2 Local storage (IndexedDB via `idb`)
-- `snapshot` store — per vehicle: `id`, `name`, `defaultGrade`, `lastOdometer`, `archived`; plus `lastUsedVehicleId`. Refreshed from `GET /api/offline-snapshot` whenever the app loads online and after each successful sync.
-- `outbox` store — `{ id, kind: 'fuel' | 'service', payload, status: 'pending' | 'failed', error?, attempts, createdAt }`.
-
-### 3.3 Write path
-- `/add` always writes to the outbox first, then triggers a sync immediately (online case completes within a second; offline case waits).
-- Entry IDs are UUIDv7 generated on the client.
-- Queued writes go to **Route Handlers**, never Server Actions (action IDs change per deploy):
-  - `POST /api/fuel-entries`
-  - `POST /api/service-entries`
-- Server inserts with `ON CONFLICT (id) DO NOTHING` → replays are idempotent.
-
-Response handling in the sync loop:
-
-| Response | Meaning | Client action |
-|---|---|---|
-| 201 | created | remove from outbox |
-| 200 | duplicate (same id, same user) | remove from outbox |
-| 401 | session gone | keep pending, prompt to sign in |
-| 403 / 404 | vehicle not owned / deleted | mark `failed` |
-| 409 | id exists for another user | mark `failed` |
-| 422 | validation (e.g. `ODOMETER_OUT_OF_RANGE`) | mark `failed` with server error |
-| 5xx / network | transient | keep pending, retry with backoff |
-
-### 3.4 Sync triggers
-iOS has no Background Sync API. Sync runs on: app start, `visibilitychange` → visible, `online` event, and right after enqueue. Single-flight (one sync loop at a time), entries sent in `createdAt` order.
-
-### 3.5 Needs attention
-`failed` outbox items are listed under Settings → Needs attention, with the server error. The user can edit-and-retry or discard. A badge on the sync indicator shows the count.
-
-### 3.6 Service worker
-- Serwist (`@serwist/next`). Verify Turbopack compatibility at scaffolding; fallback is a hand-written `public/sw.js` with the same behaviour.
-- Precache: app shell assets, `/add`, `/offline`.
-- Navigations: network-first, fall back to `/offline` (or cached `/add` for `/add`).
-- `/add` is a static client page with no user data in its HTML; auth is enforced by the API.
+### 2.8 Look
+- Brand: icon blue → sky gradient (`#1f5fc4 → #2a78d6 → #38b6f0`) on the hero card, the + button, selected station buttons and the active tab. Primary buttons are `#2a78d6`.
+- Per-area tints for icon chips: fuel amber, service rose, money green, consumption teal (darker shades in light mode, brighter in dark).
+- Tinted app background (`#f2f6fb` light, `#0a0e14` dark) with white / `#141a22` cards.
+- Charts keep the validated categorical palette (`--chart-1..6`).
 
 ## 4. Domain rules
 
@@ -137,7 +98,7 @@ For a vehicle, consider all fuel **and** service entries (excluding the entry be
 - `next` = min odometer among entries with `date > new.date`
 - Require `prev ≤ new.odometer ≤ next` (missing bounds ignored).
 
-Violation → 422 `ODOMETER_OUT_OF_RANGE` with `{ min, max }`. Offline, the `/add` screen does a soft client-side check against the snapshot's `lastOdometer` (warn, don't block).
+Violation → 422 `ODOMETER_OUT_OF_RANGE` with `{ min, max }`. The `/add` screen also does a soft client-side check against the vehicle's last odometer (warn, don't block).
 
 ### 4.4 Consumption (full-to-full)
 Fuel entries of one vehicle, sorted by `(date, odometer)`:
@@ -148,6 +109,17 @@ Fuel entries of one vehicle, sorted by `(date, odometer)`:
 5. `F` becomes the new baseline.
 6. Lifetime average = `Σ valid litres / Σ valid km × 100`. Last = most recent valid segment.
 7. Segments with 0 km are invalid.
+
+### 4.5 By-station comparison
+- A segment's fuel is the full fill that **starts** it plus any partial fills before its end. A segment counts for a station only when all of those fills are from that station; mixed or station-less segments are skipped.
+- Per station: average L/100km over its counted segments (`Σ litres / Σ km × 100`), average price per litre (litre-weighted over **all** its fills), cost per 100 km = L/100km × price, and the difference from the vehicle's cost per 100 km (lifetime L/100km × litre-weighted price over all fills) in %.
+- Stations with fewer than **3** counted segments are listed greyed out with "Not enough data (n/3)" and no comparison.
+- Sorted cheapest per 100 km first; the cheapest gets a "Best" badge when at least two stations have enough data. The difference shows as "−4% ▼" (green) / "+6% ▲" (rose), never colour alone.
+- Note under the card: "Season and fuel grade affect these numbers."
+
+### 4.6 Creating entries
+- `/add` posts to Route Handlers `POST /api/fuel-entries` and `POST /api/service-entries` with a client-generated UUIDv7 id. The server inserts with `ON CONFLICT (id) DO NOTHING`, so a retry after a lost response is idempotent (the form keeps the same id until it succeeds).
+- Responses: 201 created / 200 duplicate → back to the dashboard; 401 → sign in; 404 vehicle gone; 409 id used by another user (new id, try again); 422 `VALIDATION` or `ODOMETER_OUT_OF_RANGE` → field errors; network failure → "No connection — try again", form kept.
 
 ## 5. Data model (Drizzle, Postgres 17)
 
@@ -183,7 +155,7 @@ energy_entry
   currency       text not null default 'UAH'
   is_full        boolean not null default true
   missed_previous boolean not null default false
-  station        text null
+  station        text null               -- gas station enum
   note           text null
   created_at, updated_at
   index (vehicle_id, date)
@@ -210,26 +182,24 @@ Enums are TypeScript constants validated with Zod, stored as `text` (adding a va
 - **Next.js** (latest stable, App Router, TypeScript, Turbopack), **npm**.
 - **UI:** Tailwind + shadcn/ui, shadcn charts (Recharts).
 - **Auth:** Better Auth with email/password and passkey plugin. Passkey RP ID derived from `BETTER_AUTH_URL` (the permanent `*.vercel.app` domain). Route protection via middleware/proxy + server-side session check in every data access.
-- **DB:** Drizzle ORM + `postgres` (postgres.js). Production: Neon **pooled** URL with `prepare: false`. Local: Docker Postgres 17.
+- **DB:** Drizzle ORM + `postgres` (postgres.js) with `prepare: false`. Production: Neon direct URL. Local: Docker Postgres 17.
 - **Reads:** React Server Components querying via a data-access layer that always takes the session user.
-- **Writes:** Route Handlers for outbox-backed creates; Server Actions for online-only edits/deletes/vehicle management.
+- **Writes:** Route Handlers for creates (§4.6); Server Actions for edits/deletes/vehicle management.
 - **Validation:** Zod schemas shared between client form and server.
 
 ### 6.1 Routes
 ```
 /login, /register
 /                     dashboard
-/stats
+/stats                redirects to /
 /fuel, /fuel/[id]     list, edit
 /service, /service/[id]
 /vehicles, /vehicles/new, /vehicles/[id]
-/add?kind=fuel|service   offline-capable
-/settings             passkeys, sign out, needs attention
-/offline              fallback
+/add?kind=fuel|service
+/settings             passkeys, sign out
 /api/auth/[...all]    Better Auth
 /api/fuel-entries     POST
 /api/service-entries  POST
-/api/offline-snapshot GET
 ```
 
 ### 6.2 Project layout
@@ -238,18 +208,14 @@ src/
   app/
     (auth)/login, register
     (app)/…                      authenticated screens + shell
-    add/                         offline-capable client page
-    offline/
     api/…
-    sw.ts                        Serwist service worker
     manifest.ts
   db/
     schema.ts, client.ts, seed.ts
   lib/
     auth.ts, auth-client.ts
     data/                        user-scoped queries & mutations
-    domain/                      pure logic: fuel-math, consumption, odometer, money, enums
-    offline/                     outbox, snapshot, sync loop (IndexedDB)
+    domain/                      pure logic: fuel-math, consumption, station-stats, odometer, money, enums
   components/
 drizzle/                         migrations
 docs/spec.md
@@ -259,22 +225,22 @@ docker-compose.yml
 ### 6.3 Environment
 | Var | Local | Production |
 |---|---|---|
-| `DATABASE_URL` | Docker Postgres | Neon pooled URL |
-| `DATABASE_URL_UNPOOLED` | Docker Postgres | Neon direct URL (migrations) |
+| `DATABASE_URL` | Docker Postgres (db tests use `<name>_test` on the same local server) | Neon **direct** (non-pooled) URL; also used for migrations |
 | `BETTER_AUTH_SECRET` | random | random |
 | `BETTER_AUTH_URL` | `http://localhost:3000` | `https://<name>.vercel.app` |
 
 ## 7. PWA & branding
-- Name **Carify**, placeholder icon (car / fuel drop), theme colour matches the app background in light/dark.
+- Name **Carify**, icon: white drop on `#2a78d6`; theme colour matches the app background in light/dark.
+- No service worker. On load the app unregisters any service worker, `carify-*` caches and the `carify` IndexedDB left by earlier builds.
 - `app/manifest.ts`, `display: standalone`, portrait.
 - iOS splash screens and icons generated once with `pwa-asset-generator`.
 
 ## 8. Testing
-Vitest unit tests for `lib/domain` and `lib/offline`:
+Vitest unit tests for `lib/domain`, plus DB integration tests for `lib/data` and the API routes:
 - full-to-full consumption (partials, missed fills, zero-km, first-fill baseline)
 - two-of-three fuel math (each derivation, rounding)
 - odometer validation (bounds, same date, editing excludes self)
-- outbox/sync (status transitions per response code, idempotent replay, single-flight)
+- station comparison (attribution, mixed segments, minimum segments, ranking)
 
 No E2E tests in MVP.
 
@@ -284,4 +250,4 @@ No E2E tests in MVP.
 - Neon: single production branch.
 - Local: `docker compose up -d` (Postgres 17), `npm run dev`.
 - `npm run db:seed` — demo user + 2 vehicles + ~8 months of realistic UAH fuel/service data.
-- Build: `drizzle-kit migrate && next build` (migrations use `DATABASE_URL_UNPOOLED`). Migrations must be additive only.
+- Build: `drizzle-kit migrate && next build` (migrations use `DATABASE_URL`). Migrations must be additive only.

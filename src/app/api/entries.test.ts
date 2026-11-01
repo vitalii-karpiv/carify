@@ -2,8 +2,7 @@ import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getSessionUser } from "@/lib/auth/session";
 import { createTestUser, resetDb } from "@/lib/data/test-utils";
-import { createVehicle, setVehicleArchived } from "@/lib/data/vehicles";
-import { GET as snapshotGET } from "./offline-snapshot/route";
+import { createVehicle } from "@/lib/data/vehicles";
 import { POST as fuelPOST } from "./fuel-entries/route";
 import { POST as servicePOST } from "./service-entries/route";
 
@@ -174,35 +173,5 @@ describe("POST /api/service-entries", () => {
   it("404 for unknown vehicle", async () => {
     const res = await servicePOST(post(serviceBody({ vehicleId: uuidv7() })));
     expect(res.status).toBe(404);
-  });
-});
-
-describe("GET /api/offline-snapshot", () => {
-  it("401 without session", async () => {
-    vi.mocked(getSessionUser).mockResolvedValue(null);
-    const res = await snapshotGET();
-    expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "UNAUTHENTICATED" });
-  });
-
-  it("200 with non-archived vehicles and lastOdometer from highest entry", async () => {
-    const archived = await createVehicle(userId, { ...vInput, name: "Old" });
-    await setVehicleArchived(userId, archived.id, true);
-    await servicePOST(post(serviceBody({ odometer: 5000 })));
-    await fuelPOST(
-      post(fuelBody({ odometer: 4000, date: "2026-01-05T10:00:00Z" })),
-    );
-    const res = await snapshotGET();
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      vehicles: [
-        {
-          id: vehicleId,
-          name: "Daily",
-          defaultGrade: "A95",
-          lastOdometer: 5000,
-        },
-      ],
-    });
   });
 });

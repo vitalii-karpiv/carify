@@ -30,11 +30,11 @@ export function VehicleSwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" className="max-w-[60vw] gap-1 px-2 text-base font-semibold" disabled={pending} />
+          <Button variant="ghost" className="h-10 max-w-[65vw] gap-1 px-2 text-xl font-bold tracking-tight" disabled={pending} />
         }
       >
         <span className="truncate">{selected?.name ?? 'No vehicle'}</span>
-        <ChevronDown className="size-4 shrink-0" />
+        <ChevronDown className="size-5 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {vehicles.map((v) => (

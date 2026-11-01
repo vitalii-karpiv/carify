@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { FUEL_GRADES, SERVICE_CATEGORIES } from './enums'
+import { FUEL_GRADES, GAS_STATIONS, SERVICE_CATEGORIES } from './enums'
 import { isFuelConsistent } from './fuel-math'
 
 const optionalText = (max: number) =>
@@ -12,6 +12,9 @@ const optionalText = (max: number) =>
     },
     z.string().max(max).nullable(),
   )
+
+// '' (no station picked) is stored as null
+const station = z.preprocess((v) => (v === '' || v == null ? null : v), z.enum(GAS_STATIONS).nullable())
 
 const vin = z.preprocess(
   (v) => {
@@ -55,7 +58,7 @@ const fuelEntryBase = z.object({
   grade: z.enum(FUEL_GRADES),
   isFull: z.boolean(),
   missedPrevious: z.boolean(),
-  station: optionalText(100),
+  station,
   note: optionalText(500),
 })
 

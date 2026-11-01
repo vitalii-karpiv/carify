@@ -1,12 +1,21 @@
 'use client'
 
+import { useRef, useState } from 'react'
 import { Field, selectClass, type FieldErrors } from '@/components/forms/field'
 import { useFuelMath } from '@/components/forms/use-fuel-math'
 import { Input } from '@/components/ui/input'
-import { FUEL_GRADES, FUEL_GRADE_LABELS, type FuelGrade } from '@/lib/domain/enums'
+import {
+  FUEL_GRADES,
+  FUEL_GRADE_LABELS,
+  GAS_STATIONS,
+  GAS_STATION_LABELS,
+  type FuelGrade,
+  type GasStation,
+} from '@/lib/domain/enums'
 import { fromKyivLocalInput } from '@/lib/domain/dates'
 import type { FuelField, FuelValues } from '@/lib/domain/fuel-math'
 import { parseDecimal } from '@/lib/domain/money'
+import { cn } from '@/lib/utils'
 
 export type FuelFormDefaults = {
   vehicleId?: string
@@ -17,11 +26,12 @@ export type FuelFormDefaults = {
   grade?: FuelGrade
   isFull?: boolean
   missedPrevious?: boolean
-  station?: string
+  /** '' = no station */
+  station?: GasStation | ''
   note?: string
 }
 
-type Vehicle = { id: string; name: string; defaultGrade: FuelGrade }
+type Vehicle = { id: string; name: string; defaultGrade: FuelGrade; lastStation?: GasStation | null }
 
 const FUEL_LABELS: Record<FuelField, string> = {
   litres: 'Litres',
@@ -46,6 +56,10 @@ export function FuelFields({
   const vehicleId = defaultValues.vehicleId ?? vehicles[0]?.id
   const grade =
     defaultValues.grade ?? vehicles.find((v) => v.id === vehicleId)?.defaultGrade ?? 'A95'
+  const lastStationOf = (id: string | undefined) => vehicles.find((v) => v.id === id)?.lastStation ?? ''
+  const [station, setStation] = useState<GasStation | ''>(defaultValues.station ?? lastStationOf(vehicleId))
+  // Until the user picks a station, it follows the selected vehicle's last one.
+  const stationTouched = useRef(defaultValues.station !== undefined)
 
   return (
     <>
@@ -56,6 +70,9 @@ export function FuelFields({
           defaultValue={vehicleId}
           disabled={lockVehicle}
           className={selectClass}
+          onChange={(e) => {
+            if (!stationTouched.current) setStation(lastStationOf(e.target.value))
+          }}
         >
           {vehicles.map((v) => (
             <option key={v.id} value={v.id}>
@@ -135,9 +152,33 @@ export function FuelFields({
         />
         Missed previous fill-up
       </label>
-      <Field id="station" label="Station (optional)" error={errors.station}>
-        <Input id="station" name="station" defaultValue={defaultValues.station} />
-      </Field>
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 text-sm leading-none font-medium">Station (optional)</legend>
+        <div className="grid grid-cols-5 gap-1.5">
+          {GAS_STATIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={station === s}
+              onClick={() => {
+                stationTouched.current = true
+                // tapping the selected station clears it
+                setStation((prev) => (prev === s ? '' : s))
+              }}
+              className={cn(
+                'h-10 rounded-xl border text-[13px] font-medium transition-colors',
+                station === s
+                  ? 'border-transparent bg-brand-gradient text-white shadow-brand'
+                  : 'border-input bg-card text-foreground',
+              )}
+            >
+              {GAS_STATION_LABELS[s]}
+            </button>
+          ))}
+        </div>
+        <input type="hidden" name="station" value={station} />
+        {errors.station && <p className="text-sm text-destructive">{errors.station}</p>}
+      </fieldset>
       <Field id="note" label="Note (optional)" error={errors.note}>
         <Input id="note" name="note" defaultValue={defaultValues.note} />
       </Field>

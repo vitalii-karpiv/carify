@@ -55,6 +55,10 @@ describe('fuelEntryInputSchema', () => {
       expect.objectContaining({ path: ['totalKop'], message: 'TOTAL_MISMATCH' }),
     )
   })
+  it('accepts a known station and rejects free text', () => {
+    expect(fuelEntryInputSchema.parse({ ...fuel, station: 'WOG' }).station).toBe('WOG')
+    expect(fuelEntryInputSchema.safeParse({ ...fuel, station: 'Shell' }).success).toBe(false)
+  })
   it('rejects litres 0', () => {
     expect(fuelEntryInputSchema.safeParse({ ...fuel, litres: 0 }).success).toBe(false)
   })

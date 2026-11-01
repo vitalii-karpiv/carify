@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-import { RegisterSW } from '@/components/pwa/register-sw'
-import { SyncProvider } from '@/components/sync/sync-provider'
+import { LegacyOfflineCleanup } from '@/components/pwa/legacy-offline-cleanup'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
@@ -46,8 +45,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+    { media: '(prefers-color-scheme: light)', color: '#f2f6fb' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0e14' },
   ],
 }
 
@@ -58,9 +57,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SyncProvider>{children}</SyncProvider>
+        {children}
         <Toaster position="top-center" />
-        <RegisterSW />
+        <LegacyOfflineCleanup />
       </body>
     </html>
   )

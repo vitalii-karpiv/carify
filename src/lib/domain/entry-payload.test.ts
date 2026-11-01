@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildOutboxPayload, gradeAfterVehicleChange, isOdometerBelowLast } from './entry-payload'
+import { buildEntryPayload, gradeAfterVehicleChange, isOdometerBelowLast } from './entry-payload'
 
 const V = '0190a5b0-0000-7000-8000-000000000001'
 const ID = '0190a5b0-0000-7000-8000-000000000002'
@@ -19,9 +19,9 @@ const fuel = {
   note: '',
 }
 
-describe('buildOutboxPayload', () => {
+describe('buildEntryPayload', () => {
   it('strips dateInput, sets id, keeps ISO date', () => {
-    const r = buildOutboxPayload('fuel', fuel, ID)
+    const r = buildEntryPayload('fuel', fuel, ID)
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.payload.id).toBe(ID)
@@ -29,23 +29,23 @@ describe('buildOutboxPayload', () => {
     expect('dateInput' in r.payload).toBe(false)
   })
   it('maps issues to field errors', () => {
-    const a = buildOutboxPayload('fuel', { ...fuel, odometer: undefined }, ID)
+    const a = buildEntryPayload('fuel', { ...fuel, odometer: undefined }, ID)
     expect(a.ok).toBe(false)
     if (a.ok) return
     expect(a.errors.odometer).toBe('Invalid value')
-    const r = buildOutboxPayload('fuel', { ...fuel, totalKop: 1 }, ID)
+    const r = buildEntryPayload('fuel', { ...fuel, totalKop: 1 }, ID)
     expect(r.ok).toBe(false)
     if (r.ok) return
     expect(r.errors.totalKop).toBe('Total does not match litres × price')
   })
   it('validates service entries', () => {
-    const ok = buildOutboxPayload(
+    const ok = buildEntryPayload(
       'service',
       { vehicleId: V, date: fuel.date, odometer: 5, category: 'OIL_CHANGE', totalKop: 0, garage: '', notes: '' },
       ID,
     )
     expect(ok.ok).toBe(true)
-    const bad = buildOutboxPayload('service', { vehicleId: V, date: '', odometer: 5, category: 'X', totalKop: 0 }, ID)
+    const bad = buildEntryPayload('service', { vehicleId: V, date: '', odometer: 5, category: 'X', totalKop: 0 }, ID)
     expect(bad.ok).toBe(false)
   })
 })

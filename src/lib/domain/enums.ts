@@ -26,3 +26,13 @@ export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
   REPAIR: 'Repair',
   OTHER: 'Other',
 }
+
+export const GAS_STATIONS = ['OKKO', 'UKRNAFTA', 'UPG', 'WOG', 'OTHER'] as const
+export type GasStation = (typeof GAS_STATIONS)[number]
+export const GAS_STATION_LABELS: Record<GasStation, string> = {
+  OKKO: 'OKKO',
+  UKRNAFTA: 'Ukrnafta',
+  UPG: 'UPG',
+  WOG: 'WOG',
+  OTHER: 'Other',
+}

@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Stats moved onto the dashboard.
+  async redirects() {
+    return [{ source: "/stats", destination: "/", permanent: true }];
+  },
   turbopack: {
     rules: {
       "*.css": {

@@ -1,7 +1,8 @@
 import type { FieldErrors } from '@/components/forms/field'
 import { TOTAL_MISMATCH_MESSAGE } from '@/lib/domain/messages'
 import { fuelEntryInputSchema, serviceEntryInputSchema } from '@/lib/domain/schemas'
-import type { OutboxKind } from './outbox'
+
+export type EntryKind = 'fuel' | 'service'
 
 export type PayloadResult =
   | { ok: true; payload: { id: string } & Record<string, unknown> }
@@ -9,10 +10,10 @@ export type PayloadResult =
 
 /**
  * Validates a form payload (from `readFuelForm` / `readServiceForm`) with the Zod input schema and
- * returns the outbox payload: ISO date string, `dateInput` stripped, forced `id`.
+ * returns the request body for the create API: ISO date string, `dateInput` stripped, forced `id`.
  */
-export function buildOutboxPayload(
-  kind: OutboxKind,
+export function buildEntryPayload(
+  kind: EntryKind,
   form: Record<string, unknown>,
   id: string,
 ): PayloadResult {

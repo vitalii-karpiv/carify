@@ -31,3 +31,13 @@ export function isLocalDatabaseUrl(raw: string | undefined): boolean {
   const pgHost = postgresJsHost(raw)
   return pgHost !== null && LOCAL_HOSTS.has(pgHost) && pgHost === url.hostname
 }
+
+/** The test database for a local `DATABASE_URL`: same server, database name + `_test`. Throws for non-local URLs. */
+export function testDatabaseUrl(raw: string | undefined): string {
+  if (!isLocalDatabaseUrl(raw)) throw new Error('DATABASE_URL must point at localhost/127.0.0.1 to run db tests')
+  const url = new URL(raw!)
+  const name = decodeURIComponent(url.pathname.slice(1))
+  if (!name) throw new Error('DATABASE_URL has no database name')
+  url.pathname = `/${encodeURIComponent(`${name}_test`)}`
+  return url.toString()
+}
