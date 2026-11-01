@@ -29,6 +29,12 @@ export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
 
 export const GAS_STATIONS = ['OKKO', 'UKRNAFTA', 'UPG', 'WOG', 'OTHER'] as const
 export type GasStation = (typeof GAS_STATIONS)[number]
+/** Narrows a stored value; anything outside the list (e.g. written by an older build) reads as OTHER. */
+export function toGasStation(value: string | null): GasStation | null {
+  if (value === null) return null
+  return (GAS_STATIONS as readonly string[]).includes(value) ? (value as GasStation) : 'OTHER'
+}
+
 export const GAS_STATION_LABELS: Record<GasStation, string> = {
   OKKO: 'OKKO',
   UKRNAFTA: 'Ukrnafta',

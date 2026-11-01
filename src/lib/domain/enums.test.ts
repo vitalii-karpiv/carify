@@ -4,6 +4,7 @@ import {
   FUEL_GRADE_LABELS,
   GAS_STATIONS,
   GAS_STATION_LABELS,
+  toGasStation,
   SERVICE_CATEGORIES,
   SERVICE_CATEGORY_LABELS,
 } from './enums'
@@ -26,5 +27,10 @@ describe('enums', () => {
   it('pins stored gas station values and labels', () => {
     expect([...GAS_STATIONS]).toEqual(['OKKO', 'UKRNAFTA', 'UPG', 'WOG', 'OTHER'])
     expect(GAS_STATIONS.map((s) => GAS_STATION_LABELS[s])).toEqual(['OKKO', 'Ukrnafta', 'UPG', 'WOG', 'Other'])
+  })
+  it('narrows stored stations, mapping unknown values to OTHER', () => {
+    expect(toGasStation('WOG')).toBe('WOG')
+    expect(toGasStation(null)).toBeNull()
+    expect(toGasStation('Shell')).toBe('OTHER')
   })
 })

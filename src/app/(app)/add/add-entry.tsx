@@ -144,6 +144,7 @@ export function AddEntry({
                 setKind(k)
                 setErrors({})
                 setWarning(false)
+                gradeTouched.current = false
                 entryId.current = null
               }}
               className={cn(

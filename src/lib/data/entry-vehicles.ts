@@ -1,6 +1,7 @@
 import { and, desc, eq, isNotNull, max } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { energyEntry, serviceEntry } from '@/db/schema'
+import { toGasStation } from '@/lib/domain/enums'
 import type { EntryVehicle } from '@/lib/domain/types'
 import { listVehicles } from './vehicles'
 
@@ -31,7 +32,7 @@ export async function listEntryVehicles(userId: string): Promise<EntryVehicle[]>
   for (const r of [...fuelMax, ...serviceMax]) {
     if (r.odo !== null) last.set(r.vehicleId, Math.max(last.get(r.vehicleId) ?? r.odo, r.odo))
   }
-  const lastStation = new Map(stations.map((r) => [r.vehicleId, r.station as EntryVehicle['lastStation']]))
+  const lastStation = new Map(stations.map((r) => [r.vehicleId, toGasStation(r.station)]))
   return vehicles.map((v) => ({
     id: v.id,
     name: v.name,

@@ -9,6 +9,7 @@ import type {
   ServiceEntryUpdate,
 } from '@/lib/domain/schemas'
 import type { FuelEntry, ServiceEntry } from '@/lib/domain/types'
+import { toGasStation } from '@/lib/domain/enums'
 import { isUuid } from './ids'
 
 export type CreateResult =
@@ -41,7 +42,7 @@ function toFuelEntry(row: FuelRow): FuelEntry {
     grade: row.grade as FuelEntry['grade'],
     isFull: row.isFull,
     missedPrevious: row.missedPrevious,
-    station: row.station as FuelEntry['station'],
+    station: toGasStation(row.station),
     note: row.note,
   }
 }
