@@ -1,28 +1,28 @@
-export const FUEL_GRADES = ['A-92', 'A-95', 'A-95+', 'A-98', 'Diesel', 'Diesel+'] as const
+export const FUEL_GRADES = ['A92', 'A95', 'A95_PLUS', 'A98', 'DIESEL', 'DIESEL_PLUS'] as const
 export type FuelGrade = (typeof FUEL_GRADES)[number]
 export const FUEL_GRADE_LABELS: Record<FuelGrade, string> = {
-  'A-92': 'A-92',
-  'A-95': 'A-95',
-  'A-95+': 'A-95+',
-  'A-98': 'A-98',
-  Diesel: 'Diesel',
-  'Diesel+': 'Diesel+',
+  A92: 'A-92',
+  A95: 'A-95',
+  A95_PLUS: 'A-95+',
+  A98: 'A-98',
+  DIESEL: 'Diesel',
+  DIESEL_PLUS: 'Diesel+',
 }
 
 export const SERVICE_CATEGORIES = [
-  'oil_change',
-  'brakes',
-  'tyres',
-  'inspection',
-  'repair',
-  'other',
+  'OIL_CHANGE',
+  'BRAKES',
+  'TYRES',
+  'INSPECTION',
+  'REPAIR',
+  'OTHER',
 ] as const
 export type ServiceCategory = (typeof SERVICE_CATEGORIES)[number]
 export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
-  oil_change: 'Oil change',
-  brakes: 'Brakes',
-  tyres: 'Tyres',
-  inspection: 'Inspection',
-  repair: 'Repair',
-  other: 'Other',
+  OIL_CHANGE: 'Oil change',
+  BRAKES: 'Brakes',
+  TYRES: 'Tyres',
+  INSPECTION: 'Inspection',
+  REPAIR: 'Repair',
+  OTHER: 'Other',
 }
