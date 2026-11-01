@@ -32,7 +32,9 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: 'Carify',
-    statusBarStyle: 'black-translucent',
+    // 'default': iOS gives the status bar its own strip. With 'black-translucent' the page runs under it and
+    // iOS 26 blurs the top of the page (the top bar) with its scroll-edge effect.
+    statusBarStyle: 'default',
     startupImage: SPLASH_SIZES.flatMap(([dw, dh, ratio, w, h]) =>
       (['light', 'dark'] as const).map((scheme) => ({
         url: `/splash/${w}x${h}-${scheme}.png`,

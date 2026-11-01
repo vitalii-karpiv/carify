@@ -12,7 +12,7 @@ export function TopBar({
   selectedId: string | null
 }) {
   return (
-    <header className="sticky top-0 z-30 bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+    <header className="sticky top-0 z-30 bg-background pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-14 max-w-md items-center justify-between px-2">
         <VehicleSwitcher vehicles={vehicles} selectedId={selectedId} />
         <Link
