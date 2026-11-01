@@ -6,13 +6,19 @@ Built with Next.js 16, Postgres (Drizzle), and Better Auth (passkeys).
 ## Local setup
 
 ```bash
-docker compose up -d      # Postgres 17 (also creates the carify_test DB)
+docker compose up -d      # Postgres 17 (creates carify_test on first volume init)
 cp .env.example .env
 npm i
 npm run db:migrate
 npm run db:seed           # local databases only
 npm run dev
 ```
+
+The `carify_test` database is created only when the Docker volume is first
+initialised (via `docker/init.sql`). If you already had a volume from before,
+create it manually:
+`docker compose exec db psql -U carify -c 'CREATE DATABASE carify_test;'`
+(or `docker compose down -v`, which destroys local data).
 
 Open http://localhost:3000. Demo login (from the seed): `demo@carify.local` / `demo-password`.
 
