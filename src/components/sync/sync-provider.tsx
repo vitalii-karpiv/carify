@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { listOutbox, subscribeOutbox } from '@/lib/offline/outbox'
 import { refreshSnapshot } from '@/lib/offline/snapshot'
@@ -31,6 +32,7 @@ function subscribeOnline(cb: () => void) {
 }
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const online = useSyncExternalStore(
     subscribeOnline,
     () => navigator.onLine,
@@ -53,11 +55,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await syncOutbox()
       setNeedsAuth(res.needsAuth)
+      if (res.sent > 0) router.refresh()
     } catch {
       // best-effort; items stay in the outbox
     }
     await recount()
-  }, [recount])
+  }, [recount, router])
 
   useEffect(() => {
     const unsub = subscribeOutbox(() => void recount())

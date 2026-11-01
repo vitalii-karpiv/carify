@@ -88,23 +88,36 @@ export function NeedsAttention() {
     e.preventDefault()
     if (!editing) return
     const f = new FormData(e.currentTarget)
-    // the vehicle select may be locked/absent; keep the item's vehicle
-    if (!f.get('vehicleId')) f.set('vehicleId', String(editing.payload.vehicleId))
+    if (!f.get('vehicleId')) {
+      setErrors({ vehicleId: 'Choose a vehicle' })
+      return
+    }
     const values = editing.kind === 'fuel' ? readFuelForm(f) : readServiceForm(f)
     const result = buildOutboxPayload(editing.kind, values, editing.id)
     if (!result.ok) {
       setErrors(result.errors)
       return
     }
-    await retry(editing.id, result.payload)
-    setEditing(null)
-    setErrors({})
-    void syncNow()
+    try {
+      await retry(editing.id, result.payload)
+      setEditing(null)
+      setErrors({})
+      await syncNow()
+    } catch {
+      toast.error('Could not retry the entry')
+    }
   }
 
   if (items.length === 0) return <div id="needs-attention" />
 
+  const known = (id: unknown) => vehicles.some((v) => v.id === id)
   const name = (id: unknown) => vehicles.find((v) => v.id === id)?.name ?? 'Unknown vehicle'
+
+  const editKnown = editing ? known(editing.payload.vehicleId) : true
+  const editVehicleId = editKnown ? String(editing?.payload.vehicleId) : ''
+  const editVehicles = editKnown
+    ? vehicles
+    : [{ id: '', name: 'Unknown vehicle — choose one', defaultGrade: 'A95' as FuelGrade }, ...vehicles]
 
   return (
     <section id="needs-attention" className="flex scroll-mt-16 flex-col gap-3">
@@ -167,17 +180,18 @@ export function NeedsAttention() {
             <form key={editing.id} onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
               {editing.kind === 'fuel' ? (
                 <FuelFields
-                  vehicles={vehicles}
-                  defaultValues={fuelDefaults(editing.payload)}
+                  vehicles={editVehicles}
+                  defaultValues={{ ...fuelDefaults(editing.payload), vehicleId: editVehicleId }}
                   errors={errors}
                 />
               ) : (
                 <ServiceFields
-                  vehicles={vehicles}
-                  defaultValues={serviceDefaults(editing.payload)}
+                  vehicles={editVehicles}
+                  defaultValues={{ ...serviceDefaults(editing.payload), vehicleId: editVehicleId }}
                   errors={errors}
                 />
               )}
+              {errors.vehicleId && <p className="text-sm text-destructive">{errors.vehicleId}</p>}
               <Button type="submit">Retry</Button>
             </form>
           )}

@@ -35,3 +35,15 @@ export function buildOutboxPayload(
 export function isOdometerBelowLast(odometer: number | undefined, last: number | null | undefined): boolean {
   return odometer !== undefined && Number.isFinite(odometer) && last != null && odometer < last
 }
+
+/**
+ * Grade the form should show after the vehicle select changed: the new vehicle's default, unless the
+ * user has touched the grade (or it was deliberately kept), in which case the current grade stays.
+ */
+export function gradeAfterVehicleChange(
+  gradeTouched: boolean,
+  currentGrade: string,
+  vehicle: { defaultGrade: string } | undefined,
+): string {
+  return gradeTouched || !vehicle ? currentGrade : vehicle.defaultGrade
+}

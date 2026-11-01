@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildOutboxPayload, isOdometerBelowLast } from './entry-payload'
+import { buildOutboxPayload, gradeAfterVehicleChange, isOdometerBelowLast } from './entry-payload'
 
 const V = '0190a5b0-0000-7000-8000-000000000001'
 const ID = '0190a5b0-0000-7000-8000-000000000002'
@@ -56,5 +56,13 @@ describe('isOdometerBelowLast', () => {
     expect(isOdometerBelowLast(1000, 1000)).toBe(false)
     expect(isOdometerBelowLast(900, null)).toBe(false)
     expect(isOdometerBelowLast(undefined, 1000)).toBe(false)
+  })
+})
+
+describe('gradeAfterVehicleChange', () => {
+  it('follows the vehicle default unless grade was touched', () => {
+    expect(gradeAfterVehicleChange(false, 'A95', { defaultGrade: 'DIESEL' })).toBe('DIESEL')
+    expect(gradeAfterVehicleChange(true, 'A95', { defaultGrade: 'DIESEL' })).toBe('A95')
+    expect(gradeAfterVehicleChange(false, 'A95', undefined)).toBe('A95')
   })
 })

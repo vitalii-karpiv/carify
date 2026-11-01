@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { toKyivLocalInput } from '@/lib/domain/dates'
 import type { FuelGrade } from '@/lib/domain/enums'
 import type { SnapshotVehicle } from '@/lib/domain/types'
-import { buildOutboxPayload, isOdometerBelowLast } from '@/lib/offline/entry-payload'
+import { buildOutboxPayload, gradeAfterVehicleChange, isOdometerBelowLast } from '@/lib/offline/entry-payload'
 import { enqueue, type OutboxKind } from '@/lib/offline/outbox'
 import {
   bumpLastOdometer,
@@ -34,6 +34,7 @@ export function AddEntry() {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [warning, setWarning] = useState(false)
   const [saving, setSaving] = useState(false)
+  const gradeTouched = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -80,6 +81,20 @@ export function AddEntry() {
     setWarning(String(data.get('odometer') ?? '').trim() !== '' && isOdometerBelowLast(odo, v?.lastOdometer))
   }
 
+  function onFormChange(e: React.ChangeEvent<HTMLFormElement>) {
+    const target = e.target as unknown as HTMLSelectElement
+    checkWarning(e.currentTarget)
+    const name = target.name
+    if (name === 'grade') gradeTouched.current = true
+    if (name === 'vehicleId') {
+      const grade = e.currentTarget.elements.namedItem('grade')
+      if (grade instanceof HTMLSelectElement) {
+        const v = vehicles!.find((x) => x.id === target.value)
+        grade.value = gradeAfterVehicleChange(gradeTouched.current, grade.value, v)
+      }
+    }
+  }
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const data = new FormData(e.currentTarget)
@@ -94,16 +109,22 @@ export function AddEntry() {
     try {
       const { payload } = result
       await enqueue(kind, payload)
-      await bumpLastOdometer(String(payload.vehicleId), Number(payload.odometer))
-      await setLastUsedVehicleId(String(payload.vehicleId))
-      void syncNow()
+      try {
+        await bumpLastOdometer(String(payload.vehicleId), Number(payload.odometer))
+        await setLastUsedVehicleId(String(payload.vehicleId))
+      } catch (err) {
+        console.warn('Post-save bookkeeping failed', err)
+      }
+      const synced = syncNow()
       if (navigator.onLine) {
+        await Promise.race([synced, new Promise((r) => setTimeout(r, 3000))])
         toast.success('Saved')
         router.push('/')
         router.refresh()
       } else {
         toast.success('Saved — will sync when online')
         setWarning(false)
+        gradeTouched.current = true // the kept grade is deliberate
         setVehicles(await getSnapshotVehicles())
         setForm({
           key: current.key + 1,
@@ -144,7 +165,7 @@ export function AddEntry() {
         key={`${kind}-${current.key}`}
         onSubmit={onSubmit}
         onInput={(e) => checkWarning(e.currentTarget)}
-        onChange={(e) => checkWarning(e.currentTarget)}
+        onChange={onFormChange}
         className="flex flex-col gap-4"
         noValidate
       >
