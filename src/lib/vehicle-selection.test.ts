@@ -4,13 +4,19 @@ import { createVehicle, setVehicleArchived } from '@/lib/data/vehicles'
 import type { VehicleInput } from '@/lib/domain/schemas'
 
 let cookieValue: string | undefined
+const setCookie = vi.fn()
 vi.mock('next/headers', () => ({
-  cookies: async () => ({ get: () => (cookieValue ? { value: cookieValue } : undefined) }),
+  cookies: async () => ({
+    get: () => (cookieValue ? { value: cookieValue } : undefined),
+    set: setCookie,
+  }),
 }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
-vi.mock('@/lib/auth/session', () => ({ requireUser: vi.fn() }))
+const requireUser = vi.fn()
+vi.mock('@/lib/auth/session', () => ({ requireUser: () => requireUser() }))
 
 import { getSelectedVehicle } from './vehicle-selection'
+import { selectVehicleAction } from './vehicle-selection-actions'
 
 const input = (name: string): VehicleInput => ({
   name,
@@ -27,9 +33,11 @@ let b: { id: string }
 
 beforeEach(async () => {
   cookieValue = undefined
+  setCookie.mockClear()
   await resetDb()
   a = await createTestUser()
   b = await createTestUser()
+  requireUser.mockResolvedValue({ id: a.id, email: 'a@x', name: 'A' })
 })
 
 describe('getSelectedVehicle', () => {
@@ -68,5 +76,27 @@ describe('getSelectedVehicle', () => {
     const v = await createVehicle(a.id, input('Only'))
     await setVehicleArchived(a.id, v.id, true)
     expect(await getSelectedVehicle(a.id)).toBeNull()
+  })
+})
+
+describe('selectVehicleAction', () => {
+  it('sets a 1-year lax cookie for an owned vehicle', async () => {
+    const v = await createVehicle(a.id, input('Mine'))
+    await selectVehicleAction(v.id)
+    expect(setCookie).toHaveBeenCalledWith(
+      'vehicleId',
+      v.id,
+      expect.objectContaining({ maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' }),
+    )
+  })
+
+  it('ignores foreign, archived and non-UUID ids', async () => {
+    const theirs = await createVehicle(b.id, input('Theirs'))
+    const arch = await createVehicle(a.id, input('Arch'))
+    await setVehicleArchived(a.id, arch.id, true)
+    await selectVehicleAction(theirs.id)
+    await selectVehicleAction(arch.id)
+    await selectVehicleAction('nope')
+    expect(setCookie).not.toHaveBeenCalled()
   })
 })

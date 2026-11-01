@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { selectVehicleAction } from '@/lib/vehicle-selection'
+import { toast } from 'sonner'
+import { selectVehicleAction } from '@/lib/vehicle-selection-actions'
 
 export type SwitcherVehicle = { id: string; name: string }
 
@@ -39,7 +40,16 @@ export function VehicleSwitcher({
         {vehicles.map((v) => (
           <DropdownMenuItem
             key={v.id}
-            onClick={() => startTransition(() => selectVehicleAction(v.id))}
+            onClick={() => {
+              if (v.id === selectedId) return
+              startTransition(async () => {
+                try {
+                  await selectVehicleAction(v.id)
+                } catch {
+                  toast.error('Could not switch vehicle')
+                }
+              })
+            }}
           >
             <span className="flex-1">{v.name}</span>
             {v.id === selectedId && <Check className="size-4" />}
