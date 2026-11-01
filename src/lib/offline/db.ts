@@ -12,13 +12,25 @@ let dbPromise: Promise<IDBPDatabase<OfflineSchema>> | null = null
 
 // Lazy: nothing touches `indexedDB` until first call (browser only).
 export function openOfflineDb(): Promise<IDBPDatabase<OfflineSchema>> {
-  dbPromise ??= openDB<OfflineSchema>('carify', 1, {
-    upgrade(db) {
-      db.createObjectStore('outbox', { keyPath: 'id' })
-      db.createObjectStore('snapshot', { keyPath: 'id' })
-      db.createObjectStore('meta')
-    },
-  })
+  if (!dbPromise) {
+    const p = (async () =>
+      openDB<OfflineSchema>('carify', 1, {
+        upgrade(db) {
+          db.createObjectStore('outbox', { keyPath: 'id' })
+          db.createObjectStore('snapshot', { keyPath: 'id' })
+          db.createObjectStore('meta')
+        },
+        // iOS WebKit can drop the connection ("Connection to Indexed Database server lost").
+        terminated() {
+          if (dbPromise === p) dbPromise = null
+        },
+      }))()
+    // Never cache a failed open.
+    p.catch(() => {
+      if (dbPromise === p) dbPromise = null
+    })
+    dbPromise = p
+  }
   return dbPromise
 }
 
@@ -26,5 +38,5 @@ export function openOfflineDb(): Promise<IDBPDatabase<OfflineSchema>> {
 export async function __resetOfflineDbForTests(): Promise<void> {
   const p = dbPromise
   dbPromise = null
-  if (p) (await p).close()
+  if (p) (await p.catch(() => null))?.close()
 }

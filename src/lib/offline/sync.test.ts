@@ -174,6 +174,62 @@ describe('syncOutbox', () => {
     expect(order).toEqual(['early', 'late'])
   })
 
+  it('retry forces the original id into the POSTed payload', async () => {
+    await enqueue('fuel', { id: 'a', odometer: 1 })
+    const { retry } = await import('./outbox')
+    await retry('a', { id: 'other', odometer: 2 })
+    const fetchFn = stub(() => json({ ok: true }, 201))
+    await syncOutbox({ fetchFn })
+    expect(JSON.parse(entryCalls(fetchFn)[0][1].body as string)).toEqual({ id: 'a', odometer: 2 })
+    await enqueue('fuel', { id: 'b', odometer: 1 })
+    await retry('b', { odometer: 3 })
+    await syncOutbox({ fetchFn })
+    expect(JSON.parse(entryCalls(fetchFn)[1][1].body as string)).toEqual({ id: 'b', odometer: 3 })
+  })
+
+  it('408 and 429 back off like 5xx', async () => {
+    for (const status of [408, 429]) {
+      await enqueue('fuel', { id: `x${status}` })
+    }
+    const fetchFn = stub(() => json({}, 429))
+    const t0 = Date.now() + 100_000
+    const res = await syncOutbox({ fetchFn, now: () => t0 })
+    expect(entryCalls(fetchFn)).toHaveLength(1)
+    expect(res).toMatchObject({ failed: 0, pending: 2 })
+    expect((await listOutbox())[0]).toMatchObject({ status: 'pending', attempts: 1 })
+    await __resetOfflineDbForTests()
+    await new Promise<void>((r) => {
+      const q = indexedDB.deleteDatabase('carify')
+      q.onsuccess = () => r()
+    })
+    await enqueue('fuel', { id: 'y' })
+    await syncOutbox({ fetchFn: stub(() => json({}, 408)), now: () => t0 })
+    expect((await listOutbox())[0]).toMatchObject({ status: 'pending', attempts: 1 })
+  })
+
+  it('item enqueued during a running pass is sent in the same cycle', async () => {
+    await enqueue('fuel', { id: 'a' })
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    const sentIds: string[] = []
+    const fetchFn = stub(async (_u, init) => {
+      const id = JSON.parse(init.body as string).id
+      sentIds.push(id)
+      if (id === 'a') await gate
+      return json({ ok: true }, 201)
+    })
+    const first = syncOutbox({ fetchFn })
+    await vi.waitFor(() => expect(sentIds).toEqual(['a']))
+    await enqueue('fuel', { id: 'b' })
+    const second = syncOutbox({ fetchFn })
+    release()
+    const [r1, r2] = await Promise.all([first, second])
+    expect(r1).toBe(r2)
+    expect(sentIds).toEqual(['a', 'b'])
+    expect(r1.sent).toBe(2)
+    expect(await listOutbox()).toHaveLength(0)
+  })
+
   it('single-flight: concurrent calls share one run', async () => {
     await enqueue('fuel', { id: 'a' })
     await enqueue('fuel', { id: 'b' })

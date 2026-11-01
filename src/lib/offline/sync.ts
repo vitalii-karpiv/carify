@@ -44,11 +44,17 @@ async function toOutboxError(res: Response): Promise<OutboxError> {
 }
 
 let running: Promise<SyncResult> | null = null
+let rerun = false
 
 export function syncOutbox(
   deps: { fetchFn?: typeof fetch; now?: () => number } = {},
 ): Promise<SyncResult> {
-  running ??= run(deps).finally(() => {
+  if (running) {
+    // Items enqueued mid-pass are picked up by one more pass of the running sync.
+    rerun = true
+    return running
+  }
+  running = run(deps).finally(() => {
     running = null
   })
   return running
@@ -65,35 +71,40 @@ async function run({
   let sent = 0
   let failed = 0
   let needsAuth = false
+  let touched = false
 
-  const items = (await listOutbox()).filter((i) => i.status === 'pending' && i.nextAttemptAt <= now())
-  for (const item of items) {
-    let res: Response
-    try {
-      res = await fetchFn(PATHS[item.kind], {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item.payload),
-      })
-    } catch {
-      await backoff(item, now())
-      break
+  do {
+    rerun = false
+    const items = (await listOutbox()).filter((i) => i.status === 'pending' && i.nextAttemptAt <= now())
+    if (items.length > 0) touched = true
+    for (const item of items) {
+      let res: Response
+      try {
+        res = await fetchFn(PATHS[item.kind], {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item.payload),
+        })
+      } catch {
+        await backoff(item, now())
+        break
+      }
+      if (res.status === 200 || res.status === 201) {
+        await db.delete('outbox', item.id)
+        sent++
+      } else if (res.status === 401) {
+        needsAuth = true
+        break
+      } else if (res.status >= 500 || res.status === 408 || res.status === 429) {
+        await backoff(item, now())
+        break
+      } else {
+        await db.put('outbox', { ...item, status: 'failed', error: await toOutboxError(res) })
+        failed++
+      }
     }
-    if (res.status === 200 || res.status === 201) {
-      await db.delete('outbox', item.id)
-      sent++
-    } else if (res.status === 401) {
-      needsAuth = true
-      break
-    } else if (res.status >= 500) {
-      await backoff(item, now())
-      break
-    } else {
-      await db.put('outbox', { ...item, status: 'failed', error: await toOutboxError(res) })
-      failed++
-    }
-  }
+  } while (rerun && !needsAuth)
 
   if (sent > 0) {
     try {
@@ -102,7 +113,7 @@ async function run({
       // snapshot refresh is best-effort
     }
   }
-  if (sent > 0 || failed > 0 || items.length > 0) notifyOutbox()
+  if (touched) notifyOutbox()
 
   const pending = (await listOutbox()).filter((i) => i.status === 'pending').length
   return { sent, failed, pending, needsAuth }

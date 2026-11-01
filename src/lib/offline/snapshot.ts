@@ -4,7 +4,9 @@ import { openOfflineDb } from './db'
 export async function refreshSnapshot(fetchFn: typeof fetch = globalThis.fetch): Promise<void> {
   const res = await fetchFn('/api/offline-snapshot', { credentials: 'same-origin' })
   if (res.status !== 200) return
-  const { vehicles } = (await res.json()) as { vehicles: SnapshotVehicle[] }
+  const body = (await res.json().catch(() => null)) as { vehicles?: unknown } | null
+  if (!body || !Array.isArray(body.vehicles)) return
+  const vehicles = body.vehicles as SnapshotVehicle[]
   const db = await openOfflineDb()
   const tx = db.transaction('snapshot', 'readwrite')
   await tx.store.clear()

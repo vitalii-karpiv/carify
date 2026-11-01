@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { __resetOfflineDbForTests } from './db'
+import { __resetOfflineDbForTests, openOfflineDb } from './db'
 import { discard, enqueue, listOutbox, retry, subscribeOutbox } from './outbox'
 import {
   bumpLastOdometer,
@@ -71,7 +71,25 @@ describe('outbox', () => {
   })
 })
 
+describe('db', () => {
+  it('does not cache a failed open', async () => {
+    const spy = vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('boom')
+    })
+    await expect(openOfflineDb()).rejects.toThrow('boom')
+    spy.mockRestore()
+    const db = await openOfflineDb()
+    expect(db.name).toBe('carify')
+  })
+})
+
 describe('snapshot', () => {
+  it('invalid 200 body leaves the store untouched', async () => {
+    await refreshSnapshot((async () => Response.json({ vehicles: [v('a')] })) as unknown as typeof fetch)
+    await refreshSnapshot((async () => Response.json({ nope: 1 })) as unknown as typeof fetch)
+    expect((await getSnapshotVehicles()).map((x) => x.id)).toEqual(['a'])
+  })
+
   it('refreshSnapshot replaces the store on 200 and ignores other statuses', async () => {
     const ok = (vehicles: unknown[]) =>
       (async () => Response.json({ vehicles })) as unknown as typeof fetch

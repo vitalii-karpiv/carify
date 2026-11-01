@@ -72,7 +72,7 @@ export async function retry(id: string, payload?: Record<string, unknown>): Prom
     delete cleared.error
     await tx.store.put({
       ...cleared,
-      payload: payload ?? item.payload,
+      payload: { ...(payload ?? item.payload), id: item.id },
       status: 'pending',
       attempts: 0,
       nextAttemptAt: Date.now(),
