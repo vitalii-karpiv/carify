@@ -25,7 +25,7 @@ import type { SnapshotVehicle } from '@/lib/domain/types'
 import { formatKm } from '@/lib/domain/money'
 import { buildOutboxPayload } from '@/lib/offline/entry-payload'
 import { discard, listOutbox, retry, subscribeOutbox, type OutboxItem } from '@/lib/offline/outbox'
-import { getSnapshotVehicles } from '@/lib/offline/snapshot'
+import { getSnapshotVehicles, refreshSnapshot } from '@/lib/offline/snapshot'
 
 function fuelDefaults(p: Record<string, unknown>): FuelFormDefaults {
   const litres = Number(p.litres)
@@ -80,8 +80,20 @@ export function NeedsAttention() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
     queueMicrotask(() => void load())
-    return subscribeOutbox(() => void load())
+    if (navigator.onLine) {
+      void refreshSnapshot()
+        .then(() => {
+          if (!cancelled) return load()
+        })
+        .catch(() => {})
+    }
+    const unsub = subscribeOutbox(() => void load())
+    return () => {
+      cancelled = true
+      unsub()
+    }
   }, [load])
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -137,15 +149,17 @@ export function NeedsAttention() {
             </div>
             <p className="text-destructive">{item.error?.message ?? 'Failed to sync'}</p>
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => {
-                  setErrors({})
-                  setEditing(item)
-                }}
-              >
-                Edit &amp; retry
-              </Button>
+              {item.error?.code !== 'ID_CONFLICT' && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setErrors({})
+                    setEditing(item)
+                  }}
+                >
+                  Edit &amp; retry
+                </Button>
+              )}
               <AlertDialog>
                 <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>Discard</AlertDialogTrigger>
                 <AlertDialogContent>

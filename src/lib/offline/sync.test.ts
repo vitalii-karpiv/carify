@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { __resetOfflineDbForTests } from './db'
 import { enqueue, listOutbox } from './outbox'
-import { backoffMs, syncOutbox } from './sync'
+import { backoffDelayFor, backoffMs, syncOutbox } from './sync'
 
 beforeEach(async () => {
   await __resetOfflineDbForTests()
@@ -85,7 +85,7 @@ describe('syncOutbox', () => {
       fetchFn: stub(() => json({ error: 'ODOMETER_OUT_OF_RANGE', min: 1000, max: 2000 }, 422)),
     })
     const error = (await listOutbox())[0].error!
-    expect(norm(error.message)).toBe('Odometer must be between 1 000 and 2 000 km')
+    expect(norm(error.message)).toBe('Must be between 1 000 and 2 000 km')
     expect(error).toMatchObject({ code: 'ODOMETER_OUT_OF_RANGE', min: 1000, max: 2000 })
   })
 
@@ -101,8 +101,8 @@ describe('syncOutbox', () => {
       ),
     })
     const items = await listOutbox()
-    expect(norm(items[0].error?.message)).toBe('Odometer must be at least 1 000 km')
-    expect(norm(items[1].error?.message)).toBe('Odometer must be at most 2 000 km')
+    expect(norm(items[0].error?.message)).toBe('Must be at least 1 000 km')
+    expect(norm(items[1].error?.message)).toBe('Must be at most 2 000 km')
   })
 
   it('422 VALIDATION and unknown 4xx', async () => {
@@ -258,5 +258,21 @@ describe('syncOutbox', () => {
       (c) => String(c[0]) === '/api/offline-snapshot',
     )
     expect(snaps).toHaveLength(1)
+  })
+})
+
+describe('backoffDelayFor', () => {
+  it('picks the earliest future pending attempt', () => {
+    const items = [
+      { status: 'pending', nextAttemptAt: 9000 },
+      { status: 'pending', nextAttemptAt: 5000 },
+      { status: 'failed', nextAttemptAt: 2000 },
+      { status: 'pending', nextAttemptAt: 0 },
+    ]
+    expect(backoffDelayFor(items, 1000)).toBe(4000)
+  })
+  it('caps the delay and returns null when nothing is waiting', () => {
+    expect(backoffDelayFor([{ status: 'pending', nextAttemptAt: 10_000_000 }], 0)).toBe(600000)
+    expect(backoffDelayFor([{ status: 'pending', nextAttemptAt: 0 }], 5)).toBeNull()
   })
 })

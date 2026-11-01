@@ -1,7 +1,13 @@
-import { formatKm, formatNumber } from '@/lib/domain/money'
+import { odometerRangeMessage } from '@/lib/domain/messages'
 import { openOfflineDb } from './db'
 import { listOutbox, notifyOutbox, type OutboxError, type OutboxItem } from './outbox'
 import { refreshSnapshot } from './snapshot'
+
+export function backoffDelayFor(items: { status: string; nextAttemptAt: number }[], now: number, capMs = 600000): number | null {
+  const times = items.filter((i) => i.status === 'pending' && i.nextAttemptAt > now).map((i) => i.nextAttemptAt)
+  if (times.length === 0) return null
+  return Math.min(Math.min(...times) - now, capMs)
+}
 
 export type SyncResult = { sent: number; failed: number; pending: number; needsAuth: boolean }
 
@@ -10,15 +16,6 @@ export function backoffMs(attempts: number): number {
 }
 
 const PATHS = { fuel: '/api/fuel-entries', service: '/api/service-entries' } as const
-
-function odometerMessage(min: number | null, max: number | null): string {
-  if (min != null && max != null) {
-    return `Odometer must be between ${formatNumber(min, 0)} and ${formatKm(max)}`
-  }
-  if (min != null) return `Odometer must be at least ${formatKm(min)}`
-  if (max != null) return `Odometer must be at most ${formatKm(max)}`
-  return 'Odometer is out of range'
-}
 
 async function toOutboxError(res: Response): Promise<OutboxError> {
   const body = (await res.json().catch(() => ({}))) as {
@@ -35,7 +32,7 @@ async function toOutboxError(res: Response): Promise<OutboxError> {
   if (res.status === 422 && body.error === 'ODOMETER_OUT_OF_RANGE') {
     const min = body.min ?? null
     const max = body.max ?? null
-    return { code: 'ODOMETER_OUT_OF_RANGE', message: odometerMessage(min, max), min, max }
+    return { code: 'ODOMETER_OUT_OF_RANGE', message: odometerRangeMessage(min, max), min, max }
   }
   if (res.status === 422 && body.error === 'VALIDATION') {
     return { code: 'VALIDATION', message: 'Invalid entry' }

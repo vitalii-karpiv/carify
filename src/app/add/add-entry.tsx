@@ -15,10 +15,12 @@ import type { FuelGrade } from '@/lib/domain/enums'
 import type { SnapshotVehicle } from '@/lib/domain/types'
 import { buildOutboxPayload, gradeAfterVehicleChange, isOdometerBelowLast } from '@/lib/offline/entry-payload'
 import { enqueue, type OutboxKind } from '@/lib/offline/outbox'
+import { chooseVehicleId, readVehicleCookie } from '@/lib/offline/vehicle-choice'
 import {
   bumpLastOdometer,
   getLastUsedVehicleId,
   getSnapshotVehicles,
+  refreshSnapshot,
   setLastUsedVehicleId,
 } from '@/lib/offline/snapshot'
 
@@ -42,11 +44,22 @@ export function AddEntry() {
       try {
         const [list, last] = await Promise.all([getSnapshotVehicles(), getLastUsedVehicleId()])
         if (cancelled) return
+        const cookieId = readVehicleCookie(document.cookie)
         setVehicles(list)
-        const vehicleId = list.find((v) => v.id === last)?.id ?? list[0]?.id
-        setForm({ key: 0, vehicleId, date: toKyivLocalInput(new Date()) })
+        setForm({ key: 0, vehicleId: chooseVehicleId(list, last, cookieId), date: toKyivLocalInput(new Date()) })
+        if (!navigator.onLine) return
+        // Cached list is shown; now swap in the fresh one.
+        await refreshSnapshot()
+        const fresh = await getSnapshotVehicles()
+        if (cancelled) return
+        setVehicles(fresh)
+        setForm((prev) => {
+          if (!prev) return prev
+          if (prev.vehicleId && fresh.some((v) => v.id === prev.vehicleId)) return prev
+          return { ...prev, key: prev.key + 1, vehicleId: chooseVehicleId(fresh, last, cookieId) }
+        })
       } catch {
-        if (!cancelled) setVehicles([])
+        if (!cancelled) setVehicles((prev) => prev ?? [])
       }
     })()
     return () => {
@@ -72,7 +85,7 @@ export function AddEntry() {
     )
   }
 
-  const current = form!
+  const current = form ?? { key: 0, vehicleId: undefined, date: toKyivLocalInput(new Date()) }
 
   function checkWarning(f: HTMLFormElement) {
     const data = new FormData(f)

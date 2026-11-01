@@ -1,10 +1,10 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { listOutbox, subscribeOutbox } from '@/lib/offline/outbox'
 import { refreshSnapshot } from '@/lib/offline/snapshot'
-import { syncOutbox } from '@/lib/offline/sync'
+import { backoffDelayFor, syncOutbox } from '@/lib/offline/sync'
 
 export type SyncState = {
   online: boolean
@@ -33,6 +33,9 @@ function subscribeOnline(cb: () => void) {
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const syncRef = useRef<() => Promise<void>>(async () => {})
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const online = useSyncExternalStore(
     subscribeOnline,
     () => navigator.onLine,
@@ -60,12 +63,23 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       // best-effort; items stay in the outbox
     }
     await recount()
+    // Wake up for the earliest backed-off item even if the app stays foregrounded.
+    try {
+      if (retryTimer.current) clearTimeout(retryTimer.current)
+      retryTimer.current = null
+      const delay = backoffDelayFor(await listOutbox(), Date.now())
+      if (delay !== null) retryTimer.current = setTimeout(() => void syncRef.current(), delay + 50)
+    } catch {
+      // IndexedDB unavailable
+    }
   }, [recount, router])
 
   useEffect(() => {
+    syncRef.current = syncNow
+  }, [syncNow])
+
+  useEffect(() => {
     const unsub = subscribeOutbox(() => void recount())
-    if (navigator.onLine) void refreshSnapshot().catch(() => {})
-    queueMicrotask(() => void syncNow())
     const onVisible = () => {
       if (document.visibilityState === 'visible') void syncNow()
     }
@@ -74,10 +88,21 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('online', onOnline)
     return () => {
       unsub()
+      if (retryTimer.current) clearTimeout(retryTimer.current)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('online', onOnline)
     }
   }, [recount, syncNow])
+
+  // Mount and every navigation (login, register, vehicle changes are client-side): refresh the offline
+  // snapshot and sync; a successful sync also clears a stale `needsAuth`. Debounced to one run per navigation.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (navigator.onLine) void refreshSnapshot().catch(() => {})
+      void syncNow()
+    }, 150)
+    return () => clearTimeout(t)
+  }, [pathname, syncNow])
 
   const value = useMemo<SyncState>(
     () => ({ online, pendingCount: counts.pending, failedCount: counts.failed, needsAuth, syncNow }),

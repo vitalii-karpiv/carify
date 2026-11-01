@@ -2,7 +2,9 @@ import { cookies } from 'next/headers'
 import { getVehicle, listVehicles } from '@/lib/data/vehicles'
 import type { Vehicle } from '@/lib/domain/types'
 
-export const VEHICLE_COOKIE = 'vehicleId'
+import { VEHICLE_COOKIE } from '@/lib/vehicle-cookie'
+
+export { VEHICLE_COOKIE }
 
 export async function getSelectedVehicle(userId: string): Promise<Vehicle | null> {
   const id = (await cookies()).get(VEHICLE_COOKIE)?.value

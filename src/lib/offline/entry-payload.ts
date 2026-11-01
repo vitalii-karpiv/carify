@@ -1,4 +1,5 @@
 import type { FieldErrors } from '@/components/forms/field'
+import { TOTAL_MISMATCH_MESSAGE } from '@/lib/domain/messages'
 import { fuelEntryInputSchema, serviceEntryInputSchema } from '@/lib/domain/schemas'
 import type { OutboxKind } from './outbox'
 
@@ -26,7 +27,7 @@ export function buildOutboxPayload(
     const field = String(issue.path[0] ?? 'form')
     if (errors[field]) continue
     errors[field] =
-      issue.message === 'TOTAL_MISMATCH' ? 'Total does not match litres × price' : 'Invalid value'
+      issue.message === 'TOTAL_MISMATCH' ? TOTAL_MISMATCH_MESSAGE : 'Invalid value'
   }
   return { ok: false, errors }
 }
