@@ -10,8 +10,8 @@
     "test": "vitest run --project unit",
     "test:db": "vitest run --project db",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/lib/db/migrate.ts",
-    "db:seed": "tsx src/lib/db/seed.ts"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx --env-file=.env src/db/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
