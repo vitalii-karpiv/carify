@@ -1,0 +1,67 @@
+export type ConsumptionEntry = {
+  id: string
+  date: Date
+  odometer: number
+  litres: number
+  isFull: boolean
+  missedPrevious: boolean
+}
+
+export type Segment = {
+  endEntryId: string
+  endDate: Date
+  startOdometer: number
+  endOdometer: number
+  km: number
+  litres: number
+  lPer100: number | null
+  valid: boolean
+}
+
+export function computeSegments(entries: ConsumptionEntry[]): Segment[] {
+  const sorted = [...entries].sort(
+    (a, b) => a.date.getTime() - b.date.getTime() || a.odometer - b.odometer,
+  )
+  const segments: Segment[] = []
+  let baseline: ConsumptionEntry | null = null
+  let litres = 0
+  let missed = false
+
+  for (const entry of sorted) {
+    if (!baseline) {
+      if (entry.isFull) baseline = entry
+      continue
+    }
+    litres += entry.litres
+    missed ||= entry.missedPrevious
+    if (!entry.isFull) continue
+
+    const km = entry.odometer - baseline.odometer
+    const valid = !missed && km > 0
+    segments.push({
+      endEntryId: entry.id,
+      endDate: entry.date,
+      startOdometer: baseline.odometer,
+      endOdometer: entry.odometer,
+      km,
+      litres,
+      lPer100: valid ? (litres * 100) / km : null,
+      valid,
+    })
+    baseline = entry
+    litres = 0
+    missed = false
+  }
+  return segments
+}
+
+export function summarizeConsumption(segments: Segment[]): {
+  lifetime: number | null
+  last: number | null
+} {
+  const valid = segments.filter((s) => s.valid)
+  if (valid.length === 0) return { lifetime: null, last: null }
+  const litres = valid.reduce((sum, s) => sum + s.litres, 0)
+  const km = valid.reduce((sum, s) => sum + s.km, 0)
+  return { lifetime: (litres * 100) / km, last: valid[valid.length - 1].lPer100 }
+}
