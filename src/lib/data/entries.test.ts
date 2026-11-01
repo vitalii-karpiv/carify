@@ -65,6 +65,13 @@ function service(over: Partial<ServiceEntryInput> = {}): ServiceEntryInput {
   }
 }
 
+function upd<T extends { id: string; vehicleId: string }>(e: T): Omit<T, 'id' | 'vehicleId'> {
+  const { id, vehicleId, ...rest } = e
+  void id
+  void vehicleId
+  return rest
+}
+
 beforeEach(async () => {
   await resetDb()
   a = await createTestUser()
@@ -153,7 +160,7 @@ describe('update', () => {
     const e = fuel({ odometer: 1000 })
     await createFuelEntry(a.id, e)
     await createFuelEntry(a.id, fuel({ odometer: 1500, date: new Date('2026-02-01T00:00:00Z') }))
-    const { id: _id, vehicleId: _v, ...rest } = e
+    const rest = upd(e)
     expect(await updateFuelEntry(a.id, e.id, { ...rest, odometer: 1200, litres: 30 })).toEqual({
       status: 'updated',
     })
@@ -171,7 +178,7 @@ describe('update', () => {
     const s = service({ odometer: 1000 })
     await createServiceEntry(a.id, s)
     await createFuelEntry(a.id, fuel({ odometer: 1500, date: new Date('2026-02-01T00:00:00Z') }))
-    const { id: _id, vehicleId: _v, ...rest } = s
+    const rest = upd(s)
     expect(await updateServiceEntry(a.id, s.id, { ...rest, odometer: 1100, garage: 'X' })).toEqual({
       status: 'updated',
     })
@@ -201,8 +208,8 @@ describe('user scoping', () => {
     const s = service({ odometer: 1100, date: new Date('2026-02-01T00:00:00Z') })
     await createFuelEntry(a.id, e)
     await createServiceEntry(a.id, s)
-    const { id: _i, vehicleId: _v, ...fr } = e
-    const { id: _i2, vehicleId: _v2, ...sr } = s
+    const fr = upd(e)
+    const sr = upd(s)
     expect(await updateFuelEntry(b.id, e.id, fr)).toEqual({ status: 'not_found' })
     expect(await updateServiceEntry(b.id, s.id, sr)).toEqual({ status: 'not_found' })
     expect(await deleteFuelEntry(b.id, e.id)).toBe(false)
@@ -237,8 +244,8 @@ describe('lists', () => {
 
 describe('non-uuid ids', () => {
   it('return not-found results instead of throwing', async () => {
-    const { id: _i, vehicleId: _v, ...fr } = fuel()
-    const { id: _i2, vehicleId: _v2, ...sr } = service()
+    const fr = upd(fuel())
+    const sr = upd(service())
     expect(await getFuelEntry(a.id, 'abc')).toBeNull()
     expect(await getServiceEntry(a.id, 'abc')).toBeNull()
     expect(await deleteFuelEntry(a.id, 'abc')).toBe(false)
