@@ -68,6 +68,12 @@ describe('getVehicleOverview', () => {
     expect(o.consumption.last).toBeCloseTo(7, 5)
   })
 
+  it('uses the Kyiv month for "this month" (already November at 22:30Z on Oct 31)', async () => {
+    await fuel('2026-11-01T08:00:00Z', 2000, 30, 90000, true)
+    const o = await getVehicleOverview(userId, vehicleId, new Date('2026-10-31T22:30:00Z'))
+    expect(o.spendThisMonthKop).toBe(90000)
+  })
+
   it('is empty for a vehicle without entries', async () => {
     const other = await createVehicle(userId, {
       name: 'B', make: 'x', model: 'y', year: 2000, plate: 'BB', vin: null, defaultGrade: 'A95',

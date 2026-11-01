@@ -10,7 +10,7 @@ import {
 
 export type ConsumptionPoint = { date: string; lPer100: number }
 
-const config = { lPer100: { label: 'L/100km', color: 'var(--chart-2)' } } satisfies ChartConfig
+const config = { lPer100: { label: 'L/100km', color: 'var(--chart-1)' } } satisfies ChartConfig
 
 export function ConsumptionChart({ data }: { data: ConsumptionPoint[] }) {
   return (

@@ -14,8 +14,8 @@ import { formatUah } from '@/lib/domain/money'
 export type MonthlyRow = { month: string; fuel: number; service: number }
 
 const config = {
-  fuel: { label: 'Fuel', color: 'var(--chart-2)' },
-  service: { label: 'Service', color: 'var(--chart-4)' },
+  fuel: { label: 'Fuel', color: 'var(--chart-1)' },
+  service: { label: 'Service', color: 'var(--chart-2)' },
 } satisfies ChartConfig
 
 export function MonthlySpendChart({ data }: { data: MonthlyRow[] }) {
@@ -40,8 +40,8 @@ export function MonthlySpendChart({ data }: { data: MonthlyRow[] }) {
           }
         />
         <ChartLegend content={<ChartLegendContent />} />
-        <Bar dataKey="fuel" stackId="spend" fill="var(--color-fuel)" />
-        <Bar dataKey="service" stackId="spend" fill="var(--color-service)" radius={[3, 3, 0, 0]} />
+        <Bar dataKey="fuel" stackId="spend" fill="var(--color-fuel)" stroke="var(--card)" strokeWidth={2} />
+        <Bar dataKey="service" stackId="spend" fill="var(--color-service)" stroke="var(--card)" strokeWidth={2} radius={[3, 3, 0, 0]} />
       </BarChart>
     </ChartContainer>
   )
