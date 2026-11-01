@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Carify
 
-## Getting Started
+A mobile-first PWA for tracking a car's fuel fill-ups and service history.
+Built with Next.js 16, Postgres (Drizzle), and Better Auth (passkeys).
 
-First, run the development server:
+## Local setup
 
 ```bash
+docker compose up -d      # Postgres 17 (also creates the carify_test DB)
+cp .env.example .env
+npm i
+npm run db:migrate
+npm run db:seed           # local databases only
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Demo login (from the seed): `demo@carify.local` / `demo-password`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tests
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+With Docker running:
 
-## Learn More
+```bash
+npm test           # unit tests
+npm run test:db    # DB integration tests (need the Docker Postgres)
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Production setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Only the `master` branch deploys (`vercel.json`); previews are disabled.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **GitHub**: create a repository and push `master`.
+2. **Vercel**: import the repository as a new project. Pick the project name
+   carefully: the production URL `https://<name>.vercel.app` is permanent
+   (see Troubleshooting). Set the Production Branch to `master`.
+3. **Neon**: create a project on **Postgres 17**.
+   - Pooled connection string -> `DATABASE_URL`
+   - Direct (non-pooled) connection string -> `DATABASE_URL_UNPOOLED` (used for migrations)
 
-## Deploy on Vercel
+   If you use the Vercel-Neon integration, it injects `DATABASE_URL` and
+   `DATABASE_URL_UNPOOLED` itself. Do NOT let it create preview branches.
+4. **Environment variables** (Vercel -> Settings -> Environment Variables, Production):
+   - `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (see above, unless injected by the integration)
+   - `BETTER_AUTH_SECRET`: output of `openssl rand -base64 32`
+   - `BETTER_AUTH_URL`: `https://<name>.vercel.app`
+5. **First deploy**: push to `master` (or redeploy). The build runs
+   `drizzle-kit migrate && next build`, so the schema is migrated automatically.
+   Do not run `db:seed` against production (it refuses non-local databases).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Install on iPhone
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open the production URL in Safari -> Share -> Add to Home Screen.
+The service worker registers only in production builds.
+
+## Project rules
+
+- **Migrations are additive only** (add tables/columns, never drop or rename
+  in place). Every deploy migrates the live DB before the new code goes live.
+- **Server Actions**: a file with a file-level `'use server'` may export only
+  Server Actions, and each must derive the user via `requireUser()`. Never
+  accept a `userId` parameter. Every export is a public HTTP endpoint.
+- **Money is stored in kopecks** (integers), never floats.
+
+## Troubleshooting
+
+- **Passkeys stop working**: passkeys are bound to the domain (RP ID). Changing
+  the production domain, and so `BETTER_AUTH_URL`, invalidates all existing
+  passkeys. Keep the `*.vercel.app` URL permanent.
+- **Stale app after a deploy**: the service worker cache refreshes
+  automatically on the next deploy; reload or reopen the app once.
+- **Build fails at migrate**: check that `DATABASE_URL_UNPOOLED` is set and reachable.
