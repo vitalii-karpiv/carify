@@ -8,6 +8,7 @@ const TABLES = [
   'service_entry',
   'vehicle',
   'session',
+  'passkey',
   'account',
   'verification',
   'user',
