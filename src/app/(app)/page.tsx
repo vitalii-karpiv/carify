@@ -1,5 +1,6 @@
-import { CarFront, ChartLine, Droplet, Gauge, Receipt, Tag, Wallet } from 'lucide-react'
+import { CarFront, ChartLine, Droplet, Droplets, Gauge, Receipt, Tag, Wallet } from 'lucide-react'
 import { ConsumptionChart } from '@/components/charts/consumption-chart'
+import { MonthlyLitresChart, type LitresRow } from '@/components/charts/monthly-litres-chart'
 import { MonthlySpendChart } from '@/components/charts/monthly-spend-chart'
 import { PriceChart, type PriceRow } from '@/components/charts/price-chart'
 import { IconChip, type Tint } from '@/components/dashboard/icon-chip'
@@ -96,6 +97,9 @@ export default async function DashboardPage() {
   }
   const priceData = [...priceByDate.entries()].sort(([a], [b]) => a - b).map(([, row]) => row)
 
+  const litreGrades = FUEL_GRADES.filter((g) => d.monthlyLitres.some((m) => m.litres[g] !== undefined))
+  const litresData = d.monthlyLitres.map((m): LitresRow => ({ month: monthLabel(m.month), ...m.litres }))
+
   const monthlyData = d.monthly.map((m) => ({
     month: monthLabel(m.month),
     fuel: m.fuelKop / 100,
@@ -162,6 +166,17 @@ export default async function DashboardPage() {
           <NoData text="Not enough full fill-ups yet." />
         ) : (
           <ConsumptionChart data={consumptionData} />
+        )}
+      </Section>
+
+      <Section icon={Droplets} tint="consumption" title="Litres per month" unit="L">
+        {litresData.length === 0 ? (
+          <NoData text="No fill-ups yet." />
+        ) : (
+          <MonthlyLitresChart
+            data={litresData}
+            series={litreGrades.map((g) => ({ key: g, label: FUEL_GRADE_LABELS[g] }))}
+          />
         )}
       </Section>
 

@@ -10,23 +10,14 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { formatUah } from '@/lib/domain/money'
+import { gradeColor } from './grade-colors'
 
 export type PriceRow = { date: string; [grade: string]: number | string }
 export type PriceSeries = { key: string; label: string }
 
-// Color follows the grade, never its rank among the grades present.
-const GRADE_SLOT: Record<string, number> = {
-  A92: 1,
-  A95: 2,
-  A95_PLUS: 3,
-  A98: 4,
-  DIESEL: 5,
-  DIESEL_PLUS: 6,
-}
-
 export function PriceChart({ data, series }: { data: PriceRow[]; series: PriceSeries[] }) {
   const config: ChartConfig = Object.fromEntries(
-    series.map((s) => [s.key, { label: s.label, color: `var(--chart-${GRADE_SLOT[s.key] ?? 1})` }]),
+    series.map((s) => [s.key, { label: s.label, color: gradeColor(s.key) }]),
   )
   return (
     <ChartContainer config={config} className="h-52 w-full" data-testid="price-chart">

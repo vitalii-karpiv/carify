@@ -10,6 +10,23 @@ function parseMonth(key: string): [number, number] {
   return [y, m]
 }
 
+/** Every month key from the earliest to the latest of `keys`, inclusive. */
+function monthRange(keys: string[]): string[] {
+  const sorted = [...keys].sort()
+  const [endY, endM] = parseMonth(sorted[sorted.length - 1])
+  let [y, m] = parseMonth(sorted[0])
+  const result: string[] = []
+  while (y < endY || (y === endY && m <= endM)) {
+    result.push(`${y}-${String(m).padStart(2, '0')}`)
+    m += 1
+    if (m > 12) {
+      m = 1
+      y += 1
+    }
+  }
+  return result
+}
+
 export function monthlySpend(items: SpendItem[]): MonthlySpend[] {
   if (items.length === 0) return []
   const buckets = new Map<string, MonthlySpend>()
@@ -20,20 +37,23 @@ export function monthlySpend(items: SpendItem[]): MonthlySpend[] {
     else bucket.serviceKop += item.totalKop
     buckets.set(month, bucket)
   }
-  const keys = [...buckets.keys()].sort()
-  const [endY, endM] = parseMonth(keys[keys.length - 1])
-  let [y, m] = parseMonth(keys[0])
-  const result: MonthlySpend[] = []
-  while (y < endY || (y === endY && m <= endM)) {
-    const month = `${y}-${String(m).padStart(2, '0')}`
-    result.push(buckets.get(month) ?? { month, fuelKop: 0, serviceKop: 0 })
-    m += 1
-    if (m > 12) {
-      m = 1
-      y += 1
-    }
+  return monthRange([...buckets.keys()]).map((month) => buckets.get(month) ?? { month, fuelKop: 0, serviceKop: 0 })
+}
+
+export type MonthlyLitres = { month: string; litres: Partial<Record<FuelGrade, number>> }
+
+/** Litres filled per Kyiv month and grade; months without fill-ups are empty. */
+export function monthlyLitres(entries: { date: Date; litres: number; grade: FuelGrade }[]): MonthlyLitres[] {
+  if (entries.length === 0) return []
+  const buckets = new Map<string, Partial<Record<FuelGrade, number>>>()
+  for (const { date, litres, grade } of entries) {
+    const month = monthKey(date)
+    const bucket = buckets.get(month) ?? {}
+    // litres have 3 decimals; round away float drift
+    bucket[grade] = Math.round(((bucket[grade] ?? 0) + litres) * 1000) / 1000
+    buckets.set(month, bucket)
   }
-  return result
+  return monthRange([...buckets.keys()]).map((month) => ({ month, litres: buckets.get(month) ?? {} }))
 }
 
 export function spendTotals(items: SpendItem[]): {

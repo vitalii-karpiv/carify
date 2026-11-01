@@ -5,10 +5,12 @@ import { stationStats, type StationStat } from '@/lib/domain/station-stats'
 import {
   costPerKm,
   currentOdometer,
+  monthlyLitres,
   monthlySpend,
   pricePerLitreSeries,
   spendInMonth,
   spendTotals,
+  type MonthlyLitres,
   type MonthlySpend,
   type PricePoint,
   type SpendItem,
@@ -23,6 +25,7 @@ export type VehicleDashboard = {
   segments: Segment[]
   pricePerLitre: Partial<Record<FuelGrade, PricePoint[]>>
   monthly: MonthlySpend[]
+  monthlyLitres: MonthlyLitres[]
   totals: { fuelKop: number; serviceKop: number; totalKop: number }
   costPerKmKop: number | null
   stations: StationStat[]
@@ -59,6 +62,7 @@ export async function getVehicleDashboard(
       fuel.map((e) => ({ grade: e.grade, date: e.date, pricePerLitreKop: e.pricePerLitreKop })),
     ),
     monthly: monthlySpend(spendItems),
+    monthlyLitres: monthlyLitres(fuel),
     totals,
     costPerKmKop: costPerKm(totals.totalKop, odometers),
     stations: stationStats(fuel).stations,

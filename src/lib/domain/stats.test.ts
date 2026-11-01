@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   costPerKm,
   currentOdometer,
+  monthlyLitres,
   monthlySpend,
   pricePerLitreSeries,
   spendInMonth,
@@ -32,6 +33,27 @@ describe('monthlySpend', () => {
       { date: new Date('2026-02-10T10:00:00Z'), totalKop: 1, kind: 'service' },
     ])
     expect(r.map((m) => m.month)).toEqual(['2025-12', '2026-01', '2026-02'])
+  })
+})
+
+describe('monthlyLitres', () => {
+  it('sums litres per Kyiv month and grade, contiguous with empty months', () => {
+    expect(
+      monthlyLitres([
+        { date: new Date('2026-01-10T10:00:00Z'), litres: 40.1, grade: 'A95' },
+        { date: new Date('2026-01-20T10:00:00Z'), litres: 20.2, grade: 'A95' },
+        { date: new Date('2026-01-25T10:00:00Z'), litres: 10, grade: 'A95_PLUS' },
+        // 22:30Z on Feb 28 is already March in Kyiv
+        { date: new Date('2026-02-28T22:30:00Z'), litres: 35, grade: 'A95' },
+      ]),
+    ).toEqual([
+      { month: '2026-01', litres: { A95: 60.3, A95_PLUS: 10 } },
+      { month: '2026-02', litres: {} },
+      { month: '2026-03', litres: { A95: 35 } },
+    ])
+  })
+  it('returns [] for no entries', () => {
+    expect(monthlyLitres([])).toEqual([])
   })
 })
 

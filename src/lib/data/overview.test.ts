@@ -91,6 +91,7 @@ describe('getVehicleDashboard', () => {
       segments: [],
       pricePerLitre: {},
       monthly: [],
+      monthlyLitres: [],
       totals: { fuelKop: 0, serviceKop: 0, totalKop: 0 },
       costPerKmKop: null,
       stations: [],
@@ -103,6 +104,10 @@ describe('getVehicleDashboard', () => {
     expect(s.costPerKmKop).toBe(Math.round(625000 / 900))
     expect(s.monthly.map((m) => m.month)).toEqual(['2026-09', '2026-10'])
     expect(s.pricePerLitre.A95).toHaveLength(3)
+    expect(s.monthlyLitres).toEqual([
+      { month: '2026-09', litres: { A95: 40 } },
+      { month: '2026-10', litres: { A95: 55 } },
+    ])
     expect(s.segments.filter((x) => x.valid)).toHaveLength(1)
     // the one segment started at OKKO; WOG has a fill but no segment of its own
     expect(s.stations.map((x) => [x.station, x.segments])).toEqual([

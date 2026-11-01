@@ -58,10 +58,11 @@ Top to bottom (there is no separate stats page; `/stats` redirects to `/`):
 1. **Hero card** (brand gradient): make, model, year, plate; current odometer (max across fuel + service, "—" if none); "Last fill-up <date> · <station> · <grade>".
 2. **Stat tiles**: spend this month (fuel + service), average L/100km (lifetime), last L/100km.
 3. **Consumption** — L/100km per valid segment over time.
-4. **Price per litre** — one series per grade.
-5. **By station** (§4.5).
-6. **Monthly spend** — fuel vs service (stacked bars).
-7. **Totals** — fuel, service, combined; cost per km `(total spend) / (max odometer − min odometer)`, hidden if distance is 0.
+4. **Litres per month** — litres filled per Kyiv month (sum of fill-ups, not an estimate of litres burned), stacked bars per grade in the grade colours of the price chart; months without fill-ups show as empty; the current month is the last bar.
+5. **Price per litre** — one series per grade.
+6. **By station** (§4.5).
+7. **Monthly spend** — fuel vs service (stacked bars).
+8. **Totals** — fuel, service, combined; cost per km `(total spend) / (max odometer − min odometer)`, hidden if distance is 0.
 
 All stats are computed at read time; nothing derived is stored.
 
