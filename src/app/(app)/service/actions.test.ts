@@ -102,3 +102,20 @@ describe('deleteServiceEntryAction', () => {
     expect(await getServiceEntry(a.id, ID2)).not.toBeNull()
   })
 })
+
+describe('updateServiceEntryAction date preservation', () => {
+  it('keeps the exact stored timestamp when the date input is unchanged', async () => {
+    const exact = new Date('2026-02-01T10:00:37.123Z')
+    const { db } = await import('@/db/client')
+    const { serviceEntry } = await import('@/db/schema')
+    const { eq } = await import('drizzle-orm')
+    await db.update(serviceEntry).set({ date: exact }).where(eq(serviceEntry.id, ID2))
+    const { toKyivLocalInput } = await import('@/lib/domain/dates')
+    await expect(
+      updateServiceEntryAction(ID2, update({ date: '2026-02-01T10:00:00.000Z', dateInput: toKyivLocalInput(exact), odometer: 1450 })),
+    ).rejects.toThrow('NEXT_REDIRECT')
+    const e = await getServiceEntry(a.id, ID2)
+    expect(e?.odometer).toBe(1450)
+    expect(e?.date.toISOString()).toBe(exact.toISOString())
+  })
+})

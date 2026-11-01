@@ -43,7 +43,12 @@ export function toKyivLocalInput(date: Date): string {
   return new Date(kyivWallClockAsUtc(date)).toISOString().slice(0, 16)
 }
 
-/** Inverse of `toKyivLocalInput`: interprets the value as Kyiv local time. Invalid input → Invalid Date. */
+/**
+ * Inverse of `toKyivLocalInput`: interprets the value as Kyiv local time. Invalid input → Invalid Date.
+ * DST policy: a nonexistent time (spring-forward gap, e.g. 2026-03-29T03:30) resolves forward, to the
+ * instant after the gap (04:30 EEST = 01:30Z); an ambiguous time (fall-back overlap, e.g.
+ * 2026-10-25T03:30) resolves to the later occurrence (EET, 01:30Z).
+ */
 export function fromKyivLocalInput(value: string): Date {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value)
   if (!m) return new Date(NaN)

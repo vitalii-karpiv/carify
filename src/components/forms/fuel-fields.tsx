@@ -157,6 +157,8 @@ export function readFuelForm(f: FormData) {
   return {
     vehicleId: text('vehicleId') || undefined,
     date: Number.isNaN(date.getTime()) ? '' : date.toISOString(),
+    /** raw datetime-local text; edit actions use it to keep an unchanged stored date exact */
+    dateInput: text('date'),
     odometer: num(f.get('odometer')),
     litres: f.get('litres') === '' ? undefined : Number(f.get('litres')),
     pricePerLitreKop: f.get('pricePerLitreKop') === '' ? undefined : Number(f.get('pricePerLitreKop')),

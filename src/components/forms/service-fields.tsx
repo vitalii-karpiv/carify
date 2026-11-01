@@ -110,6 +110,8 @@ export function readServiceForm(f: FormData) {
   return {
     vehicleId: text('vehicleId') || undefined,
     date: Number.isNaN(date.getTime()) ? '' : date.toISOString(),
+    /** raw datetime-local text; edit actions use it to keep an unchanged stored date exact */
+    dateInput: text('date'),
     odometer: odometer === null ? undefined : odometer,
     category: text('category'),
     totalKop: total === null ? undefined : uahToKop(total),

@@ -39,6 +39,14 @@ describe('Kyiv local datetime-local conversion', () => {
     expect(fromKyivLocalInput('2026-10-25T02:30').toISOString()).toBe('2026-10-24T23:30:00.000Z')
     expect(fromKyivLocalInput('2026-10-25T12:00').toISOString()).toBe('2026-10-25T10:00:00.000Z')
   })
+  it('pins the gap policy: a nonexistent time resolves forward past the gap', () => {
+    expect(fromKyivLocalInput('2026-03-29T03:30').toISOString()).toBe('2026-03-29T01:30:00.000Z')
+    expect(toKyivLocalInput(fromKyivLocalInput('2026-03-29T03:30'))).toBe('2026-03-29T04:30')
+  })
+  it('pins the overlap policy: an ambiguous time resolves to the later occurrence (EET)', () => {
+    expect(fromKyivLocalInput('2026-10-25T03:30').toISOString()).toBe('2026-10-25T01:30:00.000Z')
+    expect(toKyivLocalInput(new Date('2026-10-25T00:30:00Z'))).toBe('2026-10-25T03:30')
+  })
   it('round-trips', () => {
     const d = new Date('2026-11-01T10:15:00Z')
     expect(fromKyivLocalInput(toKyivLocalInput(d)).getTime()).toBe(d.getTime())
