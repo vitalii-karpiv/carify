@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: carify
+      POSTGRES_PASSWORD: carify
+      POSTGRES_DB: carify
+    ports:
+      - "5432:5432"
+    volumes:
+      - carify_pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  carify_pgdata:
