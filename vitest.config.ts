@@ -17,7 +17,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'db',
-          include: ['src/lib/data/**/*.test.ts', 'src/lib/vehicle-selection.test.ts', 'src/app/api/**/*.test.ts'],
+          include: ['src/lib/data/**/*.test.ts', 'src/lib/vehicle-selection.test.ts', 'src/app/**/*.test.ts'],
           environment: 'node',
           fileParallelism: false,
           setupFiles: ['vitest.db-setup.ts'],

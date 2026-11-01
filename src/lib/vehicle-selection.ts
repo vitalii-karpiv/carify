@@ -13,3 +13,18 @@ export async function getSelectedVehicle(userId: string): Promise<Vehicle | null
   const [first] = await listVehicles(userId)
   return first ?? null
 }
+
+const COOKIE_OPTIONS = {
+  maxAge: 60 * 60 * 24 * 365,
+  sameSite: 'lax',
+  path: '/',
+} as const
+
+export async function setSelectedVehicleCookie(vehicleId: string): Promise<void> {
+  ;(await cookies()).set(VEHICLE_COOKIE, vehicleId, COOKIE_OPTIONS)
+}
+
+export async function clearSelectedVehicleCookieIf(vehicleId: string): Promise<void> {
+  const store = await cookies()
+  if (store.get(VEHICLE_COOKIE)?.value === vehicleId) store.delete(VEHICLE_COOKIE)
+}
