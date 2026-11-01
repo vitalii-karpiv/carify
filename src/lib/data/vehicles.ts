@@ -4,6 +4,7 @@ import { db } from '@/db/client'
 import { vehicle } from '@/db/schema'
 import type { VehicleInput } from '@/lib/domain/schemas'
 import type { Vehicle } from '@/lib/domain/types'
+import { isUuid } from './ids'
 
 type VehicleRow = typeof vehicle.$inferSelect
 
@@ -46,6 +47,7 @@ export async function listVehicles(
 }
 
 export async function getVehicle(userId: string, id: string): Promise<Vehicle | null> {
+  if (!isUuid(id)) return null
   const [row] = await db
     .select()
     .from(vehicle)
@@ -66,6 +68,7 @@ export async function updateVehicle(
   id: string,
   input: VehicleInput,
 ): Promise<Vehicle | null> {
+  if (!isUuid(id)) return null
   const [row] = await db
     .update(vehicle)
     .set({ ...fields(input), updatedAt: new Date() })
@@ -79,6 +82,7 @@ export async function setVehicleArchived(
   id: string,
   archived: boolean,
 ): Promise<boolean> {
+  if (!isUuid(id)) return false
   const rows = await db
     .update(vehicle)
     .set({ archivedAt: archived ? new Date() : null, updatedAt: new Date() })
@@ -88,6 +92,7 @@ export async function setVehicleArchived(
 }
 
 export async function deleteVehicle(userId: string, id: string): Promise<boolean> {
+  if (!isUuid(id)) return false
   const rows = await db
     .delete(vehicle)
     .where(and(eq(vehicle.id, id), eq(vehicle.userId, userId)))

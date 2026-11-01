@@ -102,3 +102,12 @@ describe('vehicles data layer', () => {
     expect(await db.select().from(serviceEntry).where(eq(serviceEntry.vehicleId, v.id))).toEqual([])
   })
 })
+
+describe('vehicles non-uuid ids', () => {
+  it('return not-found results instead of throwing', async () => {
+    expect(await getVehicle(a.id, 'abc')).toBeNull()
+    expect(await updateVehicle(a.id, 'abc', input)).toBeNull()
+    expect(await setVehicleArchived(a.id, 'abc', true)).toBe(false)
+    expect(await deleteVehicle(a.id, 'abc')).toBe(false)
+  })
+})
