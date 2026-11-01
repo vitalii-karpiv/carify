@@ -5,16 +5,10 @@ const DEMO_PASSWORD = 'demo-password'
 const MONTHS_BACK = 8
 const DAY_MS = 86_400_000
 
-function assertLocalDatabase() {
-  const url = process.env.DATABASE_URL
-  let host = ''
-  try {
-    host = new URL(url ?? '').hostname
-  } catch {
-    // fall through to the refusal below
-  }
-  if (host !== 'localhost' && host !== '127.0.0.1') {
-    console.error(`Refusing to seed: DATABASE_URL host "${host}" is not localhost/127.0.0.1`)
+async function assertLocalDatabase() {
+  const { isLocalDatabaseUrl } = await import('./seed-guard')
+  if (!isLocalDatabaseUrl(process.env.DATABASE_URL)) {
+    console.error('Refusing to seed: DATABASE_URL must point at localhost/127.0.0.1 (no host/hostaddr override, single host)')
     process.exit(1)
   }
 }
@@ -31,9 +25,9 @@ function prng(seed: number) {
 }
 
 async function main() {
-  assertLocalDatabase()
+  await assertLocalDatabase()
 
-  const [{ eq }, { db }, { user }, { auth }, vehicles, entries, math, schemas] = await Promise.all([
+  const [{ eq }, { db, client }, { user }, { auth }, vehicles, entries, math, schemas] = await Promise.all([
     import('drizzle-orm'),
     import('@/db/client'),
     import('@/db/schema'),
@@ -43,7 +37,6 @@ async function main() {
     import('@/lib/domain/fuel-math'),
     import('@/lib/domain/schemas'),
   ])
-  const { client } = await import('@/db/client')
 
   await db.delete(user).where(eq(user.email, DEMO_EMAIL))
   const created = await auth.api.signUpEmail({

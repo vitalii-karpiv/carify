@@ -9,7 +9,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/lib/{domain,offline}/**/*.test.ts'],
+          include: ['src/lib/{domain,offline}/**/*.test.ts', 'src/db/**/*.test.ts'],
           environment: 'node',
         },
       },
