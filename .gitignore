@@ -43,3 +43,6 @@ next-env.d.ts
 
 # superpowers
 .superpowers/
+
+# generated service worker (see scripts/generate-sw.mjs)
+/public/sw.js
