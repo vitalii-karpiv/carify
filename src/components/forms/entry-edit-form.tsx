@@ -1,6 +1,8 @@
 'use client'
 
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
 import { FuelFields, readFuelForm, type FuelFormDefaults } from '@/components/forms/fuel-fields'
 import { ServiceFields, readServiceForm, type ServiceFormDefaults } from '@/components/forms/service-fields'
 import type { FieldErrors } from '@/components/forms/field'
@@ -45,17 +47,27 @@ export function EntryEditForm(props: Props) {
     e.preventDefault()
     const f = new FormData(e.currentTarget)
     start(async () => {
-      handle(
-        props.kind === 'fuel'
-          ? await updateFuelEntryAction(id, readFuelForm(f))
-          : await updateServiceEntryAction(id, readServiceForm(f)),
-      )
+      try {
+        handle(
+          props.kind === 'fuel'
+            ? await updateFuelEntryAction(id, readFuelForm(f))
+            : await updateServiceEntryAction(id, readServiceForm(f)),
+        )
+      } catch (err) {
+        if (isRedirectError(err)) throw err
+        toast.error('Couldn\'t save — check your connection')
+      }
     })
   }
 
   function onDelete() {
     start(async () => {
-      handle(props.kind === 'fuel' ? await deleteFuelEntryAction(id) : await deleteServiceEntryAction(id))
+      try {
+        handle(props.kind === 'fuel' ? await deleteFuelEntryAction(id) : await deleteServiceEntryAction(id))
+      } catch (err) {
+        if (isRedirectError(err)) throw err
+        toast.error('Couldn\'t delete — check your connection')
+      }
     })
   }
 

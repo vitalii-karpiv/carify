@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatDate } from '@/lib/domain/dates'
 import { authClient } from '@/lib/auth/auth-client'
 
 type PasskeyItem = { id: string; name?: string | null; createdAt?: Date | string | null }
@@ -16,7 +17,7 @@ export function Passkeys() {
   async function add() {
     setBusy(true)
     try {
-      const res = await authClient.passkey.addPasskey({ name: `Passkey ${new Date().toLocaleDateString()}` })
+      const res = await authClient.passkey.addPasskey({ name: `Passkey ${formatDate(new Date())}` })
       if (res?.error) toast.error(res.error.message ?? 'Could not add passkey')
       else toast.success('Passkey added')
       list.refetch()
@@ -50,7 +51,7 @@ export function Passkeys() {
               <div className="truncate font-medium">{p.name || 'Passkey'}</div>
               {p.createdAt && (
                 <div className="text-muted-foreground">
-                  Added {new Date(p.createdAt).toLocaleDateString()}
+                  Added {formatDate(new Date(p.createdAt))}
                 </div>
               )}
             </div>

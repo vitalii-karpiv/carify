@@ -1,7 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -25,7 +27,13 @@ export function DangerZone({ id, name, archived }: { id: string; name: string; a
           disabled={pending}
           onClick={() =>
             start(async () => {
-              await setArchivedAction(id, !archived)
+              try {
+                await setArchivedAction(id, !archived)
+              } catch (err) {
+                if (isRedirectError(err)) throw err
+                toast.error('Couldn\'t update the vehicle — check your connection')
+                return
+              }
               router.push('/vehicles')
             })
           }
@@ -43,8 +51,13 @@ export function DangerZone({ id, name, archived }: { id: string; name: string; a
             disabled={pending || confirm.trim() === ''}
             onClick={() =>
               start(async () => {
-                const res = await deleteVehicleAction(id, confirm)
-                if (res && !res.ok) setError(res.error ?? 'Could not delete')
+                try {
+                  const res = await deleteVehicleAction(id, confirm)
+                  if (res && !res.ok) setError(res.error ?? 'Could not delete')
+                } catch (err) {
+                  if (isRedirectError(err)) throw err
+                  toast.error('Couldn\'t delete — check your connection')
+                }
               })
             }
           >

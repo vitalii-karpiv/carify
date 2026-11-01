@@ -1,6 +1,8 @@
 'use client'
 
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,11 +39,16 @@ export function VehicleForm({
       defaultGrade: text('defaultGrade'),
     }
     start(async () => {
-      const res = await action(input)
-      // a successful create/update redirects, so we only get here on failure
-      if (res && !res.ok) {
-        setErrors(res.fieldErrors ?? {})
-        setFormError(res.error ?? null)
+      try {
+        const res = await action(input)
+        // a successful create/update redirects, so we only get here on failure
+        if (res && !res.ok) {
+          setErrors(res.fieldErrors ?? {})
+          setFormError(res.error ?? null)
+        }
+      } catch (err) {
+        if (isRedirectError(err)) throw err
+        toast.error('Couldn\'t save — check your connection')
       }
     })
   }

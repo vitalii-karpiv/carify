@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth/session'
 import { getVehicleOverview } from '@/lib/data/overview'
 import { formatDate } from '@/lib/domain/dates'
-import { formatKm, formatNumber, formatUah } from '@/lib/domain/money'
+import { formatConsumption, formatKm, formatUah } from '@/lib/domain/money'
 import { getSelectedVehicle } from '@/lib/vehicle-selection'
 
 function Stat({ title, value }: { title: string; value: string }) {
@@ -18,7 +18,7 @@ function Stat({ title, value }: { title: string; value: string }) {
   )
 }
 
-const consumption = (v: number | null) => (v === null ? '—' : `${formatNumber(v, 1)} L/100km`)
+const consumption = (v: number | null) => (v === null ? '—' : formatConsumption(v))
 
 export default async function DashboardPage() {
   const user = await requireUser()

@@ -7,7 +7,7 @@ import { requireUser } from '@/lib/auth/session'
 import { getVehicleStats } from '@/lib/data/overview'
 import { formatDate } from '@/lib/domain/dates'
 import { FUEL_GRADES, FUEL_GRADE_LABELS } from '@/lib/domain/enums'
-import { formatNumber, formatUah } from '@/lib/domain/money'
+import { formatConsumption, formatNumber, formatUah } from '@/lib/domain/money'
 import { getSelectedVehicle } from '@/lib/vehicle-selection'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -61,6 +61,16 @@ export default async function StatsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">Stats</h1>
       <Section title="Consumption (L/100km)">
+        <dl className="mb-3 grid grid-cols-2 gap-y-2 text-sm">
+          <dt className="text-muted-foreground">Lifetime</dt>
+          <dd className="text-right font-medium">
+            {s.consumption.lifetime === null ? '—' : formatConsumption(s.consumption.lifetime)}
+          </dd>
+          <dt className="text-muted-foreground">Last</dt>
+          <dd className="text-right font-medium">
+            {s.consumption.last === null ? '—' : formatConsumption(s.consumption.last)}
+          </dd>
+        </dl>
         {consumptionData.length === 0 ? (
           <NoData text="Not enough full fill-ups yet." />
         ) : (

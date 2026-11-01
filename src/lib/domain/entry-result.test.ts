@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { entryErrorMessages, odometerRangeMessage } from './entry-result'
+import { entryErrorMessages } from './entry-result'
+import { odometerRangeMessage } from './messages'
 
 describe('odometerRangeMessage', () => {
   it('shows both bounds', () => {
